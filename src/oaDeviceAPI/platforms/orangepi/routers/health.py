@@ -17,10 +17,10 @@ from ..services.display import get_display_info
 from ..services.health import get_health_summary
 from ..services.utils import cache_with_ttl
 from oaDeviceAPI.core.config import APP_VERSION, settings
+from oaDeviceAPI.models.health_schemas import OrangePiHealthResponse, StandardizedErrorResponse
 
 # Constants
 CACHE_TTL = getattr(settings, 'cache_ttl', 30)
-# Using built-in response types - HealthResponse and ErrorResponse not needed for basic functionality
 
 router = APIRouter()
 
@@ -41,7 +41,7 @@ def get_cached_deployment_info() -> Dict:
     return get_deployment_info()
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get("/health", response_model=OrangePiHealthResponse)
 async def health_check():
     """Get comprehensive system health status and raw metrics using standardized schemas."""
     try:
@@ -92,7 +92,7 @@ async def health_check():
         now = datetime.now(timezone.utc)
         return JSONResponse(
             status_code=500,
-            content=ErrorResponse(status="error", timestamp=now.isoformat(), timestamp_epoch=int(now.timestamp()), error=str(e)).dict(),
+            content=StandardizedErrorResponse(status="error", timestamp=now.isoformat(), timestamp_epoch=int(now.timestamp()), error=str(e)).dict(),
         )
 
 
