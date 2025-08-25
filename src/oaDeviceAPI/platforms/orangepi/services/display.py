@@ -214,7 +214,7 @@ def get_display_info() -> Dict:
         env["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/run/user/1000/bus"
 
         # Run gnome-randr.py to get display info
-        display_info = run_command([PYTHON_CMD, str(PLAYER_ROOT / "util-scripts/gnome-randr.py")], env=env)
+        display_info = run_command([PYTHON_CMD, str(Path(PLAYER_ROOT) / "util-scripts/gnome-randr.py")], env=env)
 
         # Parse the output
         info = {"connected": False, "resolution": "unknown", "refresh_rate": "unknown", "rotation": "unknown", "scale": "unknown"}

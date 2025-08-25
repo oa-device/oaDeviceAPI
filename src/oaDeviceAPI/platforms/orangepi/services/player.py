@@ -91,7 +91,7 @@ def get_deployment_info() -> Dict:
         last_sync = None
         last_sync_epoch = None
         try:
-            sync_log = Path(PLAYER_ROOT / "logs/oasync").glob("*.log")
+            sync_log = (Path(PLAYER_ROOT) / "logs/oasync").glob("*.log")
             latest_log = max(sync_log, key=os.path.getctime)
             with open(latest_log) as f:
                 log_content = f.read()
@@ -105,7 +105,7 @@ def get_deployment_info() -> Dict:
 
         # Get player version
         version = "unknown"
-        version_file = PLAYER_ROOT / release_info / "version.txt"
+        version_file = Path(PLAYER_ROOT) / release_info / "version.txt"
         if version_file.exists():
             version = version_file.read_text().strip()
 
@@ -116,7 +116,7 @@ def get_deployment_info() -> Dict:
         deployment_info = {
             "status": "active" if service_status and display_status else "inactive",
             "version": version,
-            "release_path": str(PLAYER_ROOT / release_info),
+            "release_path": str(Path(PLAYER_ROOT) / release_info),
             "last_update": datetime.now(timezone.utc).isoformat(),
             "last_reboot": last_reboot,
             "last_sync": last_sync,

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 ENV = os.environ.copy()
 
 # Define paths to utility scripts
-UTIL_SCRIPTS_DIR = PLAYER_ROOT / "util-scripts"
+UTIL_SCRIPTS_DIR = Path(PLAYER_ROOT) / "util-scripts"
 
 class ActionsService:
     """Service for handling device actions like reboot and player restart."""
@@ -117,7 +117,7 @@ class ActionsService:
         """
         try:
             # Read current configuration from display.conf
-            config_file = PLAYER_ROOT / "config" / "display.conf"
+            config_file = Path(PLAYER_ROOT) / "config" / "display.conf"
             current_config = {}
             
             if config_file.exists():
@@ -236,7 +236,7 @@ class ActionsService:
             rotation: Display rotation
             scale: Display scale factor
         """
-        config_file = PLAYER_ROOT / "config" / "display.conf"
+        config_file = Path(PLAYER_ROOT) / "config" / "display.conf"
         
         # Read current configuration
         current_config = {}

@@ -151,7 +151,7 @@ def get_version_info() -> Dict:
             system_info["series"] = series_match.group(1)
 
         # Get player version if available
-        player_version_file = PLAYER_ROOT / "version.txt"
+        player_version_file = Path(PLAYER_ROOT) / "version.txt"
         if player_version_file.exists():
             with open(player_version_file) as f:
                 system_info["player_version"] = f.read().strip()
