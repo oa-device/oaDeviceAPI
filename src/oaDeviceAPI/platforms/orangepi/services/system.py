@@ -3,7 +3,12 @@ import platform
 import re
 from typing import Dict
 from datetime import datetime, timezone
-from ..core.config import SYSTEMCTL_CMD, PS_CMD, PLAYER_ROOT
+from oaDeviceAPI.core.config import settings
+
+# Constants with fallbacks
+SYSTEMCTL_CMD = getattr(settings, 'systemctl_cmd', 'systemctl')
+PS_CMD = getattr(settings, 'ps_cmd', 'ps')
+PLAYER_ROOT = getattr(settings, 'player_root', '/home/orangepi/Orangead/player')
 from ..services.utils import run_command
 
 

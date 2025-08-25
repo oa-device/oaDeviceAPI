@@ -4,8 +4,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..services.display import take_screenshot, get_screenshot_history
-from ..models.schemas import ScreenshotInfo
-from ..core.config import SCREENSHOT_RATE_LIMIT
+# ScreenshotInfo handled in services/display.py
+from oaDeviceAPI.core.config import settings
+
+# Constants
+SCREENSHOT_RATE_LIMIT = getattr(settings, 'screenshot_rate_limit', 60)
 
 router = APIRouter()
 

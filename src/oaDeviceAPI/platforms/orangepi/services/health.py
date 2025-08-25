@@ -1,5 +1,18 @@
 from typing import Dict
-from ..core.config import HEALTH_SCORE_WEIGHTS, HEALTH_SCORE_THRESHOLDS
+from oaDeviceAPI.core.config import settings
+
+# Default health scoring configuration
+HEALTH_SCORE_WEIGHTS = getattr(settings, 'health_score_weights', {
+    'cpu': 0.3,
+    'memory': 0.3,
+    'disk': 0.2,
+    'services': 0.2
+})
+HEALTH_SCORE_THRESHOLDS = getattr(settings, 'health_score_thresholds', {
+    'good': 80,
+    'warning': 60,
+    'critical': 40
+})
 
 def calculate_health_score(metrics: Dict, player_status: Dict, display_info: Dict) -> Dict[str, float]:
     """Calculate health scores for different components and overall system health."""

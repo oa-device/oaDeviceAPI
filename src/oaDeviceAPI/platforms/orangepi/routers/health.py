@@ -16,8 +16,11 @@ from ..services.player import check_player_status, get_deployment_info
 from ..services.display import get_display_info
 from ..services.health import get_health_summary
 from ..services.utils import cache_with_ttl
-from ..core.config import CACHE_TTL, APP_VERSION
-from ..models.schemas import HealthResponse, ErrorResponse
+from oaDeviceAPI.core.config import APP_VERSION, settings
+
+# Constants
+CACHE_TTL = getattr(settings, 'cache_ttl', 30)
+# Using built-in response types - HealthResponse and ErrorResponse not needed for basic functionality
 
 router = APIRouter()
 

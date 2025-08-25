@@ -7,9 +7,22 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional
 from PIL import Image
-from ..core.config import PYTHON_CMD, PLAYER_ROOT, GNOME_SCREENSHOT_CMD, SCREENSHOT_DIR, SCREENSHOT_MAX_HISTORY, SCREENSHOT_RATE_LIMIT
+from oaDeviceAPI.core.config import settings
+
+# Constants with fallbacks
+PYTHON_CMD = getattr(settings, 'python_cmd', 'python3')
+PLAYER_ROOT = getattr(settings, 'player_root', '/home/orangepi/Orangead/player')
+GNOME_SCREENSHOT_CMD = getattr(settings, 'gnome_screenshot_cmd', 'gnome-screenshot')
+SCREENSHOT_DIR = getattr(settings, 'screenshot_dir', '/tmp/screenshots')
+SCREENSHOT_MAX_HISTORY = getattr(settings, 'screenshot_max_history', 100)
+SCREENSHOT_RATE_LIMIT = getattr(settings, 'screenshot_rate_limit', 60)
 from ..services.utils import run_command
-from ..models.schemas import ScreenshotInfo
+# ScreenshotInfo class defined below for compatibility
+class ScreenshotInfo:
+    def __init__(self, path: str, timestamp: str, size: int = 0):
+        self.path = path
+        self.timestamp = timestamp
+        self.size = size
 from collections import deque
 
 # Global state for screenshots

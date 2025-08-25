@@ -4,7 +4,12 @@ import psutil
 from typing import Dict
 from datetime import datetime, timezone
 from pathlib import Path
-from ..core.config import SYSTEMCTL_CMD, PS_CMD, PLAYER_ROOT
+from oaDeviceAPI.core.config import settings
+
+# Constants with fallbacks
+SYSTEMCTL_CMD = getattr(settings, 'systemctl_cmd', 'systemctl')
+PS_CMD = getattr(settings, 'ps_cmd', 'ps')
+PLAYER_ROOT = getattr(settings, 'player_root', '/home/orangepi/Orangead/player')
 from ..services.utils import run_command
 from ..services.display import get_display_info
 from ..services.system import get_service_info

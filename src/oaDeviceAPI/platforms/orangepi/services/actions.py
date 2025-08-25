@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
 # Import configuration
-from api.core.config import PLAYER_ROOT
+from oaDeviceAPI.core.config import settings
+
+# Constants
+PLAYER_ROOT = getattr(settings, 'player_root', '/home/orangepi/Orangead/player')
 
 logger = logging.getLogger(__name__)
 
