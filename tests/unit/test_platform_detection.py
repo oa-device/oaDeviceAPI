@@ -1,5 +1,6 @@
 """Unit tests for platform detection logic."""
 
+import os
 import pytest
 from unittest.mock import patch, mock_open
 from src.oaDeviceAPI.core.config import detect_platform, get_platform_config
@@ -23,6 +24,7 @@ class TestPlatformDetection:
     def test_detect_orangepi_via_os_release(self):
         """Test OrangePi platform detection via os-release."""
         with patch("platform.system", return_value="Linux"), \
+             patch("os.path.exists", return_value=True), \
              patch("builtins.open", side_effect=[
                  FileNotFoundError,  # No device-tree/model
                  mock_open(read_data="ID=ubuntu\nNAME=Ubuntu")()
@@ -89,7 +91,8 @@ class TestPlatformManager:
     
     def test_platform_manager_orangepi(self):
         """Test PlatformManager with OrangePi."""
-        with patch("src.oaDeviceAPI.core.config.DETECTED_PLATFORM", "orangepi"):
+        with patch("src.oaDeviceAPI.core.config.DETECTED_PLATFORM", "orangepi"), \
+             patch("src.oaDeviceAPI.core.platform.DETECTED_PLATFORM", "orangepi"):
             manager = PlatformManager()
             assert manager.is_macos() == False
             assert manager.is_orangepi() == True
@@ -124,9 +127,12 @@ class TestPlatformManager:
     def test_service_status_check_linux(self):
         """Test service status check on Linux."""
         with patch("src.oaDeviceAPI.core.config.DETECTED_PLATFORM", "orangepi"), \
+             patch("src.oaDeviceAPI.core.platform.DETECTED_PLATFORM", "orangepi"), \
              patch("subprocess.run") as mock_run:
             
-            mock_run.return_value.stdout = "active"
+            mock_result = type('MockResult', (), {})()
+            mock_result.stdout = "active"
+            mock_run.return_value = mock_result
             manager = PlatformManager()
             
             assert manager.check_service_status("test.service") == True
