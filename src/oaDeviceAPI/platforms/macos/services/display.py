@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from ..core.config import PYTHON_CMD, TRACKER_ROOT
+from ....core.config import PYTHON_CMD, TRACKER_ROOT
 from ..services.utils import run_command
 
 

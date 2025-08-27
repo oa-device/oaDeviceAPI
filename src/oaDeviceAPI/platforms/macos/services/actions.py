@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 
-from ..core.config import LAUNCHCTL_CMD
+from ....core.config import LAUNCHCTL_CMD
 
 logger = logging.getLogger(__name__)
 

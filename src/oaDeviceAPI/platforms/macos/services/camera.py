@@ -19,11 +19,19 @@ import uuid
 from datetime import datetime
 from typing import Dict, Generator, Iterator, List, Optional
 
-import cv2
-import numpy as np
+# Graceful handling of optional dependencies
+try:
+    import cv2
+    import numpy as np
+    CV2_AVAILABLE = True
+except ImportError:
+    CV2_AVAILABLE = False
+    cv2 = None
+    np = None
+
 from fastapi import HTTPException
 
-from ..models.schemas import CameraInfo
+from ....models.schemas import CameraInfo
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -177,117 +185,138 @@ def _get_camera_index(camera_id: str) -> int:
     return matching_cameras[0]
 
 
-def get_camera_capture(camera_id: str) -> cv2.VideoCapture:
+def get_camera_capture(camera_id: str):
     """
     Get a VideoCapture object for the specified camera.
-
-    Instead of trying to access the camera directly, this function now proxies
-    the Tracker's camera feed to avoid conflicts with the Tracker's exclusive
-    camera access.
-
+    
     Args:
-        camera_id: The ID of the camera
-
+        camera_id: The ID of the camera to capture from
+        
     Returns:
-        cv2.VideoCapture: The camera capture object
-
-    Raises:
-        HTTPException: If the camera feed cannot be accessed
+        cv2.VideoCapture or None: Video capture object, or None if cv2 not available
     """
-    global _active_captures
-
-    with _captures_lock:
-        # Check if we already have an active capture for this camera
-        if camera_id in _active_captures:
-            capture = _active_captures[camera_id]
-
-            # Check if the capture is still open
-            if capture.isOpened():
-                return capture
-            else:
-                # Remove the closed capture
-                del _active_captures[camera_id]
-
-        # Instead of accessing the camera directly, use the Tracker's camera feed
-        # The Tracker serves its camera feed at http://localhost:8080/cam.jpg
-        tracker_feed_url = "http://localhost:8080/cam.jpg"
-
-        # Create a new capture using the Tracker's feed URL
-        capture = cv2.VideoCapture(tracker_feed_url)
-
+    if not CV2_AVAILABLE:
+        logger.error("OpenCV (cv2) not available - cannot create camera capture")
+        return None
+    
+    try:
+        # Convert camera_id to integer if it's numeric
+        if camera_id.isdigit():
+            capture_index = int(camera_id)
+        else:
+            # For non-numeric IDs, try to find the camera and use index 0 as fallback
+            cameras = get_camera_list()
+            capture_index = 0  # Default to first camera
+            
+            for i, camera in enumerate(cameras):
+                if camera.id == camera_id:
+                    capture_index = i
+                    break
+        
+        capture = cv2.VideoCapture(capture_index)
+        
         if not capture.isOpened():
-            logger.error(f"Failed to access Tracker camera feed at {tracker_feed_url}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to access camera feed for camera ID {camera_id}. The Tracker may not be running.",
-            )
-
-        # Store the capture
-        _active_captures[camera_id] = capture
-
+            logger.error(f"Failed to open camera {camera_id} at index {capture_index}")
+            return None
+            
+        # Set some basic properties
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        capture.set(cv2.CAP_PROP_FPS, 30)
+        
         return capture
+    
+    except Exception as e:
+        logger.error(f"Error creating camera capture for {camera_id}: {str(e)}")
+        return None
 
 
-def release_camera_capture(camera_id: str) -> None:
+def generate_mjpeg_stream(capture) -> Generator[bytes, None, None]:
     """
-    Release a camera capture.
-
+    Generate MJPEG stream from camera capture.
+    
     Args:
-        camera_id: The ID of the camera to release
+        capture: cv2.VideoCapture object
+        
+    Yields:
+        bytes: MJPEG frame data
     """
-    global _active_captures
-
-    with _captures_lock:
-        if camera_id in _active_captures:
-            _active_captures[camera_id].release()
-            del _active_captures[camera_id]
+    if not CV2_AVAILABLE or capture is None:
+        logger.error("OpenCV not available or invalid capture - cannot generate stream")
+        return
+    
+    try:
+        while True:
+            ret, frame = capture.read()
+            if not ret:
+                logger.warning("Failed to read frame from camera")
+                break
+            
+            # Encode frame as JPEG
+            _, buffer = cv2.imencode('.jpg', frame)
+            frame_bytes = buffer.tobytes()
+            
+            # Yield frame in MJPEG format
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+            
+            # Small delay to prevent overwhelming the client
+            time.sleep(0.033)  # ~30 FPS
+    
+    except Exception as e:
+        logger.error(f"Error in MJPEG stream generation: {str(e)}")
+    
+    finally:
+        if capture:
+            capture.release()
 
 
 def generate_mjpeg_frames(camera_id: str) -> Generator[bytes, None, None]:
     """
-    Generate MJPEG frames from the camera.
-
-    This function yields JPEG-encoded frames in the format required for
-    MJPEG streaming over HTTP. It now uses the Tracker's camera feed
-    to avoid conflicts with the Tracker's exclusive camera access.
-
+    Generate MJPEG frames for a specific camera ID.
+    
+    This is the main function expected by the router that handles
+    the complete workflow from camera_id to MJPEG stream.
+    
     Args:
         camera_id: The ID of the camera to stream from
-
+        
     Yields:
-        bytes: JPEG-encoded frame with MJPEG multipart headers
+        bytes: MJPEG frame data
     """
-    try:
-        # Get the camera capture (now proxying from Tracker)
-        capture = get_camera_capture(camera_id)
+    if not CV2_AVAILABLE:
+        logger.error("OpenCV (cv2) not available - cannot generate MJPEG frames")
+        return
+    
+    capture = get_camera_capture(camera_id)
+    if capture is None:
+        logger.error(f"Failed to get camera capture for camera {camera_id}")
+        return
+    
+    # Use the existing stream generator
+    yield from generate_mjpeg_stream(capture)
 
-        while True:
-            # Read a frame from the Tracker's feed
-            success, frame = capture.read()
 
-            if not success:
-                logger.error(f"Failed to read frame from camera {camera_id}")
-                break
-
-            # Encode the frame as JPEG
-            _, jpeg_frame = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-
-            # Convert to bytes
-            frame_bytes = jpeg_frame.tobytes()
-
-            # Yield the frame with MJPEG multipart headers
-            yield b"--frame\r\n"
-            yield b"Content-Type: image/jpeg\r\n\r\n"
-            yield frame_bytes
-            yield b"\r\n"
-
-            # Control the frame rate
-            time.sleep(1 / 15)  # Aim for 15 FPS
-
-    except Exception as e:
-        logger.exception(f"Error streaming from camera {camera_id}: {str(e)}")
-
-    finally:
-        # Don't release the capture here, as it might be used by other streams
-        # We'll rely on the capture pool management to handle this
-        pass
+def release_camera_capture(camera_id: str) -> None:
+    """
+    Release camera capture resources for a specific camera.
+    
+    This function is called by the router as a background task
+    to ensure proper cleanup of camera resources.
+    
+    Args:
+        camera_id: The ID of the camera to release
+    """
+    with _captures_lock:
+        if camera_id in _active_captures:
+            try:
+                capture = _active_captures[camera_id]
+                if capture and capture.isOpened():
+                    capture.release()
+                    logger.info(f"Released camera capture for camera {camera_id}")
+            except Exception as e:
+                logger.error(f"Error releasing camera capture for {camera_id}: {str(e)}")
+            finally:
+                del _active_captures[camera_id]
+        else:
+            logger.debug(f"No active capture found for camera {camera_id}")

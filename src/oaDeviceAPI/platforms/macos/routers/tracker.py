@@ -5,7 +5,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import StreamingResponse
 
-from ..core.config import TRACKER_API_URL
+from ....core.config import TRACKER_API_URL
 from ..services.utils import cache_with_ttl
 
 router = APIRouter()

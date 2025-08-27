@@ -1,10 +1,11 @@
 import logging
 import os
-import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from oaDeviceAPI.core.utils import run_command_detailed
 
 logger = logging.getLogger(__name__)
 
@@ -19,31 +20,13 @@ SCRIPTS_DIR = os.path.join(CAMGUARD_BASE_DIR, "scripts")
 
 def run_command(command: List[str], timeout: int = 10) -> Dict[str, Any]:
     """Run a shell command and return the result"""
-    try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
-        return {
-            "success": result.returncode == 0,
-            "returncode": result.returncode,
-            "stdout": result.stdout.strip(),
-            "stderr": result.stderr.strip(),
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "success": False,
-            "error": f"Command timed out after {timeout} seconds",
-            "returncode": -1,
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "returncode": -1,
-        }
+    result = run_command_detailed(command, timeout)
+    return {
+        "success": result["success"],
+        "returncode": result["returncode"],
+        "stdout": result["stdout"],
+        "stderr": result["stderr"],
+    }
 
 
 def get_camguard_service_status() -> Dict[str, Any]:

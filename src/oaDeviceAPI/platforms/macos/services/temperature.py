@@ -1,9 +1,9 @@
 """Real temperature monitoring service for macOS devices using SMC."""
 
 import os
-import psutil
+import subprocess
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from .utils import run_command
 
@@ -11,8 +11,8 @@ from .utils import run_command
 def get_cpu_temperature() -> Optional[float]:
     """Get real CPU temperature using smctemp binary via Apple SMC."""
     try:
-        # Path to smctemp binary (integrated into macos-api)
-        smctemp_path = os.path.join(os.path.dirname(__file__), "..", "bin", "smctemp")
+        # Path to smctemp binary (integrated into oaDeviceAPI)
+        smctemp_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "bin", "macos", "smctemp")
         
         # Fallback paths if not found in expected location
         fallback_paths = [
@@ -48,141 +48,155 @@ def get_cpu_temperature() -> Optional[float]:
                     output = run_command([binary_path, "-l"])
                     for line in output.split('\n'):
                         if line.strip().startswith(sensor):
-                            # Extract temperature from line like "  Te05  [flt ]  42.3 (bytes: 35 03 29 42)"
-                            parts = line.split(']')
-                            if len(parts) > 1:
-                                temp_part = parts[1].strip().split('(')[0].strip()
-                                try:
-                                    temp = float(temp_part)
-                                    if 0 <= temp <= 120:  # Reasonable temperature range
-                                        return round(temp, 1)
-                                except ValueError:
-                                    continue
+                            # Parse temperature from line like "Te05  +45.6°C  (ht06)"
+                            parts = line.split()
+                            if len(parts) >= 2:
+                                temp_str = parts[1].replace('+', '').replace('°C', '')
+                                return float(temp_str)
                             break
                     continue
                 
-                temp_str = output.strip()
-                
-                # Parse temperature value (should be a float like "64.2")
-                if temp_str and temp_str.replace('.', '').replace('-', '').isdigit():
-                    temp = float(temp_str)
-                    if 0 <= temp <= 120:  # Reasonable temperature range
-                        return round(temp, 1)
-                        
-            except Exception as e:
-                print(f"Error reading sensor {sensor}: {e}")
+                # Parse output for -c flag (CPU temperature)
+                if output and output != "":
+                    # Output like "+45.6°C" or just "45.6"
+                    temp_str = output.replace('+', '').replace('°C', '').strip()
+                    if temp_str:
+                        return float(temp_str)
+            except (ValueError, subprocess.TimeoutExpired):
                 continue
         
-        # Return None if real temperature reading fails
         return None
-        
-    except Exception as e:
-        print(f"Error getting real CPU temperature: {e}")
-        # Return None if SMC reading fails
-        return None
-
-
-
-
-def get_thermal_state() -> Dict[str, any]:
-    """Get thermal state information using pmset command."""
-    try:
-        cmd = ["pmset", "-g", "therm"]
-        output = run_command(cmd)
-        
-        thermal_info = {
-            "thermal_state": "normal",
-            "cpu_speed_limit": None,
-            "thermal_pressure": False
-        }
-        
-        # Parse thermal state output
-        for line in output.split('\n'):
-            line = line.strip().lower()
-            if 'cpu speed limit:' in line:
-                parts = line.split(':')
-                if len(parts) > 1:
-                    try:
-                        limit_str = parts[1].strip().replace('%', '')
-                        thermal_info["cpu_speed_limit"] = int(limit_str)
-                        thermal_info["thermal_pressure"] = int(limit_str) < 100
-                    except ValueError:
-                        pass
-            elif 'thermal state:' in line:
-                parts = line.split(':')
-                if len(parts) > 1:
-                    thermal_info["thermal_state"] = parts[1].strip()
-        
-        return thermal_info
+    
     except Exception:
+        return None
+
+
+def get_all_temperatures() -> Dict[str, float]:
+    """Get all available temperature sensors from SMC."""
+    temperatures = {}
+    
+    try:
+        # Path to smctemp binary
+        smctemp_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "bin", "macos", "smctemp")
+        
+        # Fallback paths if not found in expected location
+        fallback_paths = [
+            "/usr/local/bin/smctemp",
+            os.path.expanduser("~/orangead/macos-api/macos_api/bin/smctemp"),
+            "smctemp"  # If it's in PATH
+        ]
+        
+        # Find available smctemp binary
+        binary_path = None
+        if os.path.exists(smctemp_path) and os.access(smctemp_path, os.X_OK):
+            binary_path = smctemp_path
+        else:
+            for path in fallback_paths:
+                if os.path.exists(path) and os.access(path, os.X_OK):
+                    binary_path = path
+                    break
+        
+        if not binary_path:
+            return temperatures
+        
+        # Get all temperature sensors
+        output = run_command([binary_path, "-l"])
+        
+        for line in output.split('\n'):
+            if line.strip() and "°C" in line:
+                parts = line.split()
+                if len(parts) >= 2:
+                    sensor_name = parts[0]
+                    temp_str = parts[1].replace('+', '').replace('°C', '')
+                    try:
+                        temperatures[sensor_name] = float(temp_str)
+                    except ValueError:
+                        continue
+    
+    except Exception:
+        pass
+    
+    return temperatures
+
+
+def get_temperature_metrics() -> Dict:
+    """Get comprehensive temperature metrics for macOS devices."""
+    try:
+        # Get CPU temperature
+        cpu_temp = get_cpu_temperature()
+        
+        # Get all available temperatures
+        all_temps = get_all_temperatures()
+        
+        # Calculate statistics if we have temperature data
+        temp_values = list(all_temps.values()) if all_temps else []
+        
         return {
-            "thermal_state": "unknown",
-            "cpu_speed_limit": None,
-            "thermal_pressure": False
+            "cpu": {
+                "celsius": cpu_temp,
+                "fahrenheit": (cpu_temp * 9/5 + 32) if cpu_temp else None,
+                "status": "normal" if cpu_temp and cpu_temp < 70 else "warm" if cpu_temp and cpu_temp < 85 else "hot" if cpu_temp else "unknown"
+            },
+            "sensors": all_temps,
+            "statistics": {
+                "count": len(temp_values),
+                "average": sum(temp_values) / len(temp_values) if temp_values else None,
+                "min": min(temp_values) if temp_values else None,
+                "max": max(temp_values) if temp_values else None,
+                "hot_count": len([t for t in temp_values if t > 70]) if temp_values else 0
+            },
+            "thermal_state": {
+                "pressure": get_thermal_pressure(),
+                "speed_limit": get_speed_limit_status()
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    except Exception as e:
+        return {
+            "error": str(e),
+            "cpu": {"celsius": None, "fahrenheit": None, "status": "error"},
+            "sensors": {},
+            "statistics": {"count": 0},
+            "thermal_state": {"pressure": "unknown", "speed_limit": "unknown"},
+            "timestamp": datetime.now().isoformat()
         }
 
 
-def get_temperature_metrics() -> Dict[str, any]:
-    """Get real temperature metrics for the macOS device using SMC."""
-    timestamp = datetime.now().isoformat()
-    
-    # Get CPU temperature (real via SMC, fallback to estimation)
-    cpu_temp = get_cpu_temperature()
-    
-    # Get thermal state
-    thermal_state = get_thermal_state()
-    
-    # Determine if we're using real SMC data
-    method = "none"
-    smctemp_path = os.path.join(os.path.dirname(__file__), "..", "bin", "smctemp")
-    fallback_paths = [
-        "/usr/local/bin/smctemp",
-        os.path.expanduser("~/orangead/macos-api/macos_api/bin/smctemp"),
-        "smctemp"
-    ]
-    
-    # Check if we have access to real SMC temperature
-    has_smc = False
-    if os.path.exists(smctemp_path) and os.access(smctemp_path, os.X_OK):
-        has_smc = True
-        method = "smc_real"
-    else:
-        for path in fallback_paths:
-            if os.path.exists(path) and os.access(path, os.X_OK):
-                has_smc = True
-                method = "smc_real"
-                break
-    
-    # Determine thermal health (only if we have real temperature data)
-    thermal_health = "unknown"
-    thermal_issues = []
-    
-    if thermal_state.get("thermal_pressure", False):
-        thermal_health = "warning"
-        thermal_issues.append("thermal_pressure_detected")
-    
-    if cpu_temp is not None:
-        # Only determine health if we have real temperature data
-        thermal_health = "good"
-        if cpu_temp > 80:  # High temperature threshold
-            thermal_health = "critical"
-            thermal_issues.append("high_cpu_temperature")
-        elif cpu_temp > 70:  # Moderate temperature threshold
-            thermal_health = "warning"
-            thermal_issues.append("elevated_cpu_temperature")
-    
-    return {
-        "timestamp": timestamp,
-        "cpu_temperature": cpu_temp,
-        "thermal_state": thermal_state,
-        "thermal_health": thermal_health,
-        "thermal_issues": thermal_issues,
-        "temperature_unit": "celsius",
-        "method": method,
-        "capabilities": {
-            "cpu_temperature": cpu_temp is not None,
-            "thermal_state": bool(thermal_state.get("thermal_state")),
-            "thermal_pressure_detection": True,
-            "smc_available": has_smc
-        }
-    }
+def get_thermal_pressure() -> str:
+    """Get thermal pressure state from macOS."""
+    try:
+        # Try to get thermal pressure info using pmset
+        output = run_command(["pmset", "-g", "therm"])
+        if "thermal pressure" in output.lower():
+            if "nominal" in output.lower():
+                return "nominal"
+            elif "moderate" in output.lower():
+                return "moderate"
+            elif "heavy" in output.lower():
+                return "heavy"
+            elif "trapping" in output.lower():
+                return "critical"
+        return "unknown"
+    except Exception:
+        return "unknown"
+
+
+def get_speed_limit_status() -> str:
+    """Get CPU speed limit status."""
+    try:
+        # Check if CPU is being throttled
+        output = run_command(["pmset", "-g", "therm"])
+        if "speed limit" in output.lower():
+            if "100%" in output:
+                return "normal"
+            else:
+                # Extract percentage if available
+                import re
+                match = re.search(r'speed limit (\d+)%', output.lower())
+                if match:
+                    return f"throttled_{match.group(1)}%"
+                return "throttled"
+        return "normal"
+    except Exception:
+        return "unknown"

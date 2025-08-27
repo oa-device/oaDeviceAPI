@@ -7,9 +7,9 @@ from typing import Dict
 
 import psutil
 
-from ..core.config import LAUNCHCTL_CMD, PS_CMD, TRACKER_ROOT
-from ..services.utils import run_command
-from ..services.temperature import get_temperature_metrics
+from ....core.config import LAUNCHCTL_CMD, PS_CMD, TRACKER_ROOT
+from .utils import run_command
+from .temperature import get_temperature_metrics
 
 
 def get_system_metrics() -> Dict:

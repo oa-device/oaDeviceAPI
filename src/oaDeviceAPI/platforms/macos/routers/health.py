@@ -7,6 +7,9 @@ from fastapi.responses import JSONResponse
 
 from ....core.config import APP_VERSION, settings
 from ....models.health_schemas import StandardizedErrorResponse, MacOSHealthResponse
+
+# Constants
+CACHE_TTL = getattr(settings, 'cache_ttl', 30)
 from ..services.display import get_display_info
 from ..services.health import get_health_summary
 from ..services.system import get_device_info, get_system_metrics, get_version_info
@@ -40,7 +43,7 @@ def get_cached_deployment_info() -> Dict:
     return get_deployment_info()
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get("/health", response_model=MacOSHealthResponse)
 async def health_check():
     """Get comprehensive system health status and raw metrics using standardized schemas."""
     try:
@@ -101,7 +104,7 @@ async def health_check():
         now = datetime.now(timezone.utc)
         return JSONResponse(
             status_code=500,
-            content=ErrorResponse(
+            content=StandardizedErrorResponse(
                 status="error",
                 timestamp=now.isoformat(),
                 timestamp_epoch=int(now.timestamp()),
@@ -137,7 +140,7 @@ async def temperature_metrics():
         now = datetime.now(timezone.utc)
         return JSONResponse(
             status_code=500,
-            content=ErrorResponse(
+            content=StandardizedErrorResponse(
                 status="error",
                 timestamp=now.isoformat(),
                 timestamp_epoch=int(now.timestamp()),

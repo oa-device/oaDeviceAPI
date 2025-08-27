@@ -12,7 +12,7 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from ..models.schemas import CameraInfo, CameraListResponse, ErrorResponse
+from ....models.schemas import CameraInfo, CameraListResponse, ErrorResponse
 from ..services.camera import (
     check_camera_availability,
     generate_mjpeg_frames,
@@ -39,6 +39,17 @@ async def list_cameras():
         "count": len(cameras),
         "device_has_camera_support": len(cameras) > 0,
     }
+
+
+@router.get("/cameras/status")
+async def camera_status():
+    """
+    Check the status of camera availability on the system.
+
+    Returns:
+        Status information about camera availability
+    """
+    return check_camera_availability()
 
 
 @router.get("/cameras/{camera_id}")
@@ -120,14 +131,3 @@ async def stream_camera(camera_id: str, background_tasks: BackgroundTasks):
                 "camera": camera.dict(),
             },
         )
-
-
-@router.get("/cameras/status")
-async def camera_status():
-    """
-    Check the status of camera availability on the system.
-
-    Returns:
-        Status information about camera availability
-    """
-    return check_camera_availability()

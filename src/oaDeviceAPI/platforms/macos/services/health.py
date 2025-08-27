@@ -1,6 +1,6 @@
 from typing import Dict
 
-from ..core.config import HEALTH_SCORE_THRESHOLDS, HEALTH_SCORE_WEIGHTS
+from ....core.config import HEALTH_SCORE_THRESHOLDS, HEALTH_SCORE_WEIGHTS
 
 
 def calculate_health_score(

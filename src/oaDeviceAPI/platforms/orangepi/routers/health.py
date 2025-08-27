@@ -16,8 +16,8 @@ from ..services.player import check_player_status, get_deployment_info
 from ..services.display import get_display_info
 from ..services.health import get_health_summary
 from ..services.utils import cache_with_ttl
-from oaDeviceAPI.core.config import APP_VERSION, settings
-from oaDeviceAPI.models.health_schemas import OrangePiHealthResponse, StandardizedErrorResponse
+from ....core.config import APP_VERSION, settings
+from ....models.health_schemas import OrangePiHealthResponse, StandardizedErrorResponse
 
 # Constants
 CACHE_TTL = getattr(settings, 'cache_ttl', 30)

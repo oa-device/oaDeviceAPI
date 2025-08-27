@@ -11,7 +11,7 @@ from typing import Dict
 import psutil
 
 # Import local health schemas - self-contained for independent deployment
-from oaDeviceAPI.models.health_schemas import (
+from ....models.health_schemas import (
     BaseCPUMetrics,
     BaseMemoryMetrics,
     BaseDiskMetrics,
@@ -23,7 +23,7 @@ from oaDeviceAPI.models.health_schemas import (
     OrangePiCapabilities
 )
 
-from oaDeviceAPI.core.config import APP_VERSION
+from ....core.config import APP_VERSION
 from .system import get_version_info
 
 

@@ -1,67 +1,70 @@
-import subprocess
-from functools import lru_cache
-from time import time
+"""
+macOS-specific utilities module.
+
+This module now imports shared utilities from core.utils and provides
+macOS-specific utility functions only.
+"""
+
 from typing import Dict, List, Optional
+from oaDeviceAPI.core.utils import (
+    run_command,
+    cache_with_ttl,
+    format_bytes,
+    parse_version,
+    safe_dict_get
+)
 
 
-def run_command(cmd: List[str], env: Optional[Dict] = None) -> str:
-    """Run a shell command and return its output."""
+def get_system_profiler_info(data_type: str) -> Dict:
+    """
+    Get system information using system_profiler command.
+    
+    Args:
+        data_type: Type of data to retrieve (e.g., 'SPHardwareDataType')
+        
+    Returns:
+        Parsed system profiler data
+    """
     try:
-        result = subprocess.run(
-            cmd, env=env or {}, capture_output=True, text=True, check=True
-        )
-        return result.stdout.strip()
-    except subprocess.CalledProcessError:
-        return ""
+        output = run_command(['system_profiler', '-json', data_type])
+        if output:
+            import json
+            return json.loads(output)
+    except Exception:
+        pass
+    return {}
 
 
-def cache_with_ttl(ttl_seconds: int):
-    """Decorator that implements an LRU cache with time-based invalidation."""
-
-    def decorator(func):
-        # Use a cache of size 1 since we only need the latest value
-        func = lru_cache(maxsize=1)(func)
-        # Store the last refresh time
-        func.last_refresh = 0
-
-        def wrapper(*args, **kwargs):
-            # Check if cache needs refresh
-            now = time()
-            if now - func.last_refresh > ttl_seconds:
-                func.cache_clear()
-                func.last_refresh = now
-            return func(*args, **kwargs)
-
-        # Add cache management methods to the wrapper
-        wrapper.cache_clear = func.cache_clear
-        wrapper.cache_info = func.cache_info
-        return wrapper
-
-    return decorator
-
-
-def format_bytes(size: int) -> str:
-    """Format bytes into human readable format."""
-    for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if size < 1024.0:
-            return f"{size:.1f} {unit}"
-        size /= 1024.0
-    return f"{size:.1f} PB"
-
-
-def parse_version(version_str: str) -> tuple:
-    """Parse version string into comparable tuple."""
+def get_launchd_service_status(service_name: str) -> Dict:
+    """
+    Get macOS LaunchAgent/LaunchDaemon service status.
+    
+    Args:
+        service_name: Name of the service to check
+        
+    Returns:
+        Service status information
+    """
     try:
-        return tuple(map(int, version_str.split(".")))
-    except (AttributeError, ValueError):
-        return (0, 0, 0)
-
-
-def safe_dict_get(d: Dict, *keys, default=None):
-    """Safely get nested dictionary values."""
-    for key in keys:
-        try:
-            d = d[key]
-        except (KeyError, TypeError, AttributeError):
-            return default
-    return d
+        output = run_command(['launchctl', 'list', service_name])
+        if output:
+            # Parse launchctl output into structured data
+            lines = output.strip().split('\n')
+            if len(lines) >= 1:
+                parts = lines[0].split('\t')
+                if len(parts) >= 3:
+                    return {
+                        'pid': parts[0] if parts[0] != '-' else None,
+                        'status': int(parts[1]) if parts[1] != '-' else 0,
+                        'label': parts[2],
+                        'running': parts[0] != '-'
+                    }
+    except Exception:
+        pass
+    
+    return {
+        'pid': None,
+        'status': -1,
+        'label': service_name,
+        'running': False
+    }

@@ -6,7 +6,7 @@ from typing import Dict
 
 import psutil
 
-from ..core.config import LAUNCHCTL_CMD, PS_CMD, TRACKER_ROOT
+from ....core.config import LAUNCHCTL_CMD, PS_CMD, TRACKER_ROOT
 from ..services.display import get_display_info
 from ..services.system import get_service_info
 from ..services.utils import run_command
