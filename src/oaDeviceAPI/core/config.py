@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     orangepi_display_config: Path = Field(default=Path("/etc/orangead/display.conf"))
     orangepi_player_service: str = Field(default="slideshow-player.service")
     
+    # macOS specific paths
+    tracker_root_dir: str = Field(default="~/orangead/tracker", env="TRACKER_ROOT_DIR")
+    tracker_api_url: str = Field(default="http://localhost:8080", env="TRACKER_API_URL")
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
@@ -123,3 +127,35 @@ PLATFORM_CONFIG = {
 def get_platform_config() -> dict:
     """Get configuration for the detected platform."""
     return PLATFORM_CONFIG.get(DETECTED_PLATFORM, PLATFORM_CONFIG["linux"])
+
+
+# Command constants for macOS compatibility
+LAUNCHCTL_CMD = "/bin/launchctl"
+PS_CMD = "/bin/ps"
+READLINK_CMD = "/usr/bin/readlink"
+PYTHON_CMD = "/usr/bin/python3"
+
+# Tracker root path
+from pathlib import Path
+TRACKER_ROOT = Path(os.path.expanduser(settings.tracker_root_dir))
+
+# API URLs  
+TRACKER_API_URL = settings.tracker_api_url
+
+# Cache settings
+CACHE_TTL = getattr(settings, 'service_timeout', 30)
+
+# Health score settings
+HEALTH_SCORE_WEIGHTS = {
+    "cpu": 0.25,
+    "memory": 0.25,
+    "disk": 0.25,
+    "tracker": 0.25
+}
+
+HEALTH_SCORE_THRESHOLDS = {
+    "cpu": {"good": 80, "warning": 90},
+    "memory": {"good": 80, "warning": 90},  
+    "disk": {"good": 85, "warning": 95},
+    "tracker": {"good": 1.0, "warning": 0.5}
+}
