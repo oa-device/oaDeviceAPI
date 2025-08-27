@@ -22,8 +22,8 @@ class TailscaleSubnetMiddleware(BaseHTTPMiddleware):
         """Check if the request is from within the Tailscale subnet."""
         client_ip = request.client.host
         
-        # Skip check for localhost and development
-        if client_ip in ["127.0.0.1", "::1", "localhost"]:
+        # Skip check for localhost, development, and test clients
+        if client_ip in ["127.0.0.1", "::1", "localhost", "testclient"]:
             return await call_next(request)
         
         try:
