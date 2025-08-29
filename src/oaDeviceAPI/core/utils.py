@@ -107,9 +107,11 @@ def cache_with_ttl(ttl_seconds: int):
             
             return func(*args, **kwargs)
         
-        # Preserve function attributes
+        # Preserve function attributes and cache methods
         wrapper.__name__ = func.__name__
         wrapper.__doc__ = func.__doc__
+        wrapper.cache_info = func.cache_info
+        wrapper.cache_clear = func.cache_clear
         return wrapper
     
     return decorator
