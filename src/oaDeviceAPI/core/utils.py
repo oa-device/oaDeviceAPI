@@ -25,10 +25,16 @@ def run_command(cmd: List[str], env: Optional[Dict] = None, timeout: int = 30) -
     Returns:
         Command output as string, empty string on error
     """
+    import os
     try:
+        # Inherit parent environment and merge with provided env
+        merged_env = os.environ.copy()
+        if env:
+            merged_env.update(env)
+        
         result = subprocess.run(
             cmd,
-            env=env or {},
+            env=merged_env,
             capture_output=True,
             text=True,
             check=True,
