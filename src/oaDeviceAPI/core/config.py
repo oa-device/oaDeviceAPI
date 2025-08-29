@@ -43,9 +43,11 @@ class Settings(BaseSettings):
     tracker_root_dir: str = Field(default="~/orangead/tracker", env="TRACKER_ROOT_DIR")
     tracker_api_url: str = Field(default="http://localhost:8080", env="TRACKER_API_URL")
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+        "extra": "ignore"
+    }
 
 
 def detect_platform() -> str:
