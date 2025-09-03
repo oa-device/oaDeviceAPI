@@ -204,8 +204,8 @@ async def platform_info():
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host=settings.host,
-        port=settings.port,
+        host=settings.network.host,
+        port=settings.network.port,
         reload=True,  # For development
         log_level=settings.log_level.lower()
     )
