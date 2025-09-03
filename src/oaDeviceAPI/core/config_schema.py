@@ -199,7 +199,7 @@ class HealthConfig(BaseModel):
     disk_warning_threshold: float = Field(default=85, ge=0, le=100)
     disk_critical_threshold: float = Field(default=95, ge=0, le=100)
     
-    @root_validator
+    @model_validator(mode='before')
     def validate_weights(cls, values):
         """Ensure health weights sum to 1.0."""
         weight_sum = (
@@ -214,7 +214,8 @@ class HealthConfig(BaseModel):
         
         return values
     
-    @root_validator
+    @model_validator(mode='before')
+    @classmethod
     def validate_thresholds(cls, values):
         """Ensure critical thresholds are higher than warning thresholds."""
         for component in ['cpu', 'memory', 'disk']:
