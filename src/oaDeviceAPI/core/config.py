@@ -5,58 +5,18 @@ import platform
 from pathlib import Path
 from typing import Optional
 
-from pydantic import Field
-from pydantic_settings import BaseSettings
+from .config_schema import AppConfig, Platform, ServiceManager
 
+# App version
 APP_VERSION = "1.0.0"
-
-
-class Settings(BaseSettings):
-    """Application settings with platform detection."""
-    
-    # API Configuration
-    host: str = Field(default="0.0.0.0", env="OAAPI_HOST")
-    port: int = Field(default=9090, env="OAAPI_PORT")
-    
-    # Security
-    tailscale_subnet: str = Field(default="100.64.0.0/10", env="TAILSCALE_SUBNET")
-    
-    # Logging
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
-    
-    # Platform Detection (auto-detected, but can be overridden)
-    platform_override: Optional[str] = Field(default=None, env="PLATFORM_OVERRIDE")
-    
-    # Platform-specific paths and configuration
-    screenshot_dir: Path = Field(default=Path("/tmp/screenshots"))
-    service_timeout: int = Field(default=30)
-    
-    # macOS specific
-    macos_bin_dir: Path = Field(default=Path("/usr/local/bin"))
-    macos_service_dir: Path = Field(default=Path.home() / "Library/LaunchAgents")
-    
-    # OrangePi specific  
-    orangepi_display_config: Path = Field(default=Path("/etc/orangead/display.conf"))
-    orangepi_player_service: str = Field(default="slideshow-player.service")
-    
-    # macOS specific paths
-    tracker_root_dir: str = Field(default="~/orangead/tracker", env="TRACKER_ROOT_DIR")
-    tracker_api_url: str = Field(default="http://localhost:8080", env="TRACKER_API_URL")
-    
-    model_config = {
-        "env_file": ".env",
-        "case_sensitive": False,
-        "extra": "ignore"
-    }
 
 
 def detect_platform() -> str:
     """Detect the current platform."""
-    settings = Settings()
-    
     # Check for manual override first
-    if settings.platform_override:
-        return settings.platform_override.lower()
+    platform_override = os.getenv("PLATFORM_OVERRIDE")
+    if platform_override:
+        return platform_override.lower()
     
     # Detect based on system
     system = platform.system().lower()
@@ -89,75 +49,72 @@ def detect_platform() -> str:
     return "unknown"
 
 
-# Global settings instance
-settings = Settings()
+def get_platform_config(platform_name: str) -> dict:
+    """Get configuration for the specified platform."""
+    platform_configs = {
+        "macos": {
+            "service_manager": ServiceManager.LAUNCHCTL,
+            "bin_paths": [Path("/usr/local/bin"), Path("/opt/homebrew/bin")],
+            "temp_dir": Path("/tmp"),
+            "screenshot_supported": False,
+            "camera_supported": True,
+            "tracker_supported": True,
+            "camguard_supported": True,
+        },
+        "orangepi": {
+            "service_manager": ServiceManager.SYSTEMCTL,
+            "bin_paths": [Path("/usr/bin"), Path("/usr/local/bin")],
+            "temp_dir": Path("/tmp"),
+            "screenshot_supported": True,
+            "camera_supported": False,
+            "tracker_supported": False,
+            "camguard_supported": False,
+        },
+        "linux": {
+            "service_manager": ServiceManager.SYSTEMCTL,
+            "bin_paths": [Path("/usr/bin"), Path("/usr/local/bin")],
+            "temp_dir": Path("/tmp"),
+            "screenshot_supported": False,
+            "camera_supported": False,
+            "tracker_supported": False,
+            "camguard_supported": False,
+        }
+    }
+    
+    return platform_configs.get(platform_name.lower(), platform_configs["linux"])
 
-# Detected platform
-DETECTED_PLATFORM = detect_platform()
 
-# Platform-specific configuration
-PLATFORM_CONFIG = {
-    "macos": {
-        "bin_paths": ["/usr/local/bin", "/opt/homebrew/bin"],
-        "service_manager": "launchctl",
-        "temp_dir": "/tmp",
-        "screenshot_supported": False,
-        "camera_supported": True,
-        "tracker_supported": True,
-        "camguard_supported": True,
-    },
-    "orangepi": {
-        "bin_paths": ["/usr/bin", "/usr/local/bin"],
-        "service_manager": "systemctl",
-        "temp_dir": "/tmp",
-        "screenshot_supported": True,
-        "camera_supported": False,
-        "tracker_supported": False,
-        "camguard_supported": False,
-    },
-    "linux": {
-        "bin_paths": ["/usr/bin", "/usr/local/bin"],
-        "service_manager": "systemctl",
-        "temp_dir": "/tmp",
-        "screenshot_supported": False,
-        "camera_supported": False,
-        "tracker_supported": False,
-        "camguard_supported": False,
+# Initialize configuration with platform detection
+detected_platform = detect_platform()
+platform_config = get_platform_config(detected_platform)
+
+# Create app configuration with platform-specific defaults
+config_defaults = {
+    "app_version": APP_VERSION,
+    "platform": {
+        "platform": detected_platform,
+        "service_manager": platform_config["service_manager"],
+        "bin_paths": platform_config["bin_paths"],
+        "temp_dir": platform_config["temp_dir"],
     }
 }
 
-def get_platform_config() -> dict:
-    """Get configuration for the detected platform."""
-    return PLATFORM_CONFIG.get(DETECTED_PLATFORM, PLATFORM_CONFIG["linux"])
+# Global settings instance with validated configuration
+settings = AppConfig(**config_defaults)
 
+# Backward compatibility - export commonly used values
+DETECTED_PLATFORM = settings.platform.platform
+PLATFORM_CONFIG = platform_config
+
+# Legacy exports for backward compatibility
+TRACKER_ROOT = settings.services.tracker_root_dir
+TRACKER_API_URL = settings.services.tracker_api_url
+CACHE_TTL = settings.cache.default_ttl
+HEALTH_SCORE_WEIGHTS = settings.get_health_weights()
+HEALTH_SCORE_THRESHOLDS = settings.get_health_thresholds()
 
 # Command constants for macOS compatibility
 LAUNCHCTL_CMD = "/bin/launchctl"
 PS_CMD = "/bin/ps"
 READLINK_CMD = "/usr/bin/readlink"
 PYTHON_CMD = "/usr/bin/python3"
-
-# Tracker root path
-from pathlib import Path
-TRACKER_ROOT = Path(os.path.expanduser(settings.tracker_root_dir))
-
-# API URLs  
-TRACKER_API_URL = settings.tracker_api_url
-
-# Cache settings
-CACHE_TTL = getattr(settings, 'service_timeout', 30)
-
-# Health score settings
-HEALTH_SCORE_WEIGHTS = {
-    "cpu": 0.25,
-    "memory": 0.25,
-    "disk": 0.25,
-    "tracker": 0.25
-}
-
-HEALTH_SCORE_THRESHOLDS = {
-    "cpu": {"good": 80, "warning": 90},
-    "memory": {"good": 80, "warning": 90},  
-    "disk": {"good": 85, "warning": 95},
-    "tracker": {"good": 1.0, "warning": 0.5}
-}
