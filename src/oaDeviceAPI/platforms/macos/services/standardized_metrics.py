@@ -28,51 +28,24 @@ from .system import get_version_info
 
 
 def get_standardized_cpu_metrics() -> BaseCPUMetrics:
-    """Get CPU metrics in standardized format."""
-    try:
-        cpu_usage = psutil.cpu_percent(interval=1)
-        cpu_cores = psutil.cpu_count()
-        
-        # Get processor information
-        version_info = get_version_info()
-        cpu_model = version_info.get("processor", platform.processor())
-        
-        return BaseCPUMetrics(
-            usage_percent=cpu_usage,
-            cores=cpu_cores,
-            architecture=platform.machine(),
-            model=cpu_model
-        )
-    except Exception as e:
-        # Fallback with minimal data
-        return BaseCPUMetrics(
-            usage_percent=psutil.cpu_percent(interval=0.1),
-            cores=psutil.cpu_count() or 1,
-            architecture=platform.machine(),
-            model="Unknown"
-        )
+    """Get CPU metrics in standardized format using unified metrics system."""
+    from ....core.metrics import get_metrics_collector
+    from ..metrics_provider import MacOSMetricsProvider
+    
+    # Get metrics collector with macOS provider
+    collector = get_metrics_collector()
+    if not hasattr(collector, 'platform_provider') or collector.platform_provider is None:
+        from ....core.metrics import set_metrics_collector, MacOSMetricsCollector
+        collector = MacOSMetricsCollector(MacOSMetricsProvider())
+        set_metrics_collector(collector)
+    
+    return collector.get_standardized_cpu_metrics()
 
 
 def get_standardized_memory_metrics() -> BaseMemoryMetrics:
-    """Get memory metrics in standardized format."""
-    try:
-        memory = psutil.virtual_memory()
-        
-        return BaseMemoryMetrics(
-            usage_percent=memory.percent,
-            total=memory.total,
-            used=memory.used,
-            available=memory.available
-        )
-    except Exception as e:
-        # Fallback with minimal data
-        memory = psutil.virtual_memory()
-        return BaseMemoryMetrics(
-            usage_percent=memory.percent,
-            total=memory.total,
-            used=memory.used,
-            available=memory.available
-        )
+    """Get memory metrics in standardized format using unified metrics system."""
+    from ....core.metrics import get_metrics_collector
+    return get_metrics_collector().get_standardized_memory_metrics()
 
 
 def get_standardized_disk_metrics() -> BaseDiskMetrics:
