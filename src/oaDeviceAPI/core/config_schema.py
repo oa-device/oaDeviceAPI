@@ -9,7 +9,7 @@ import os
 from enum import Enum
 from pathlib import Path
 from typing import Optional, Dict, Any, Union, List
-from pydantic import BaseModel, Field, validator, root_validator
+from pydantic import BaseModel, Field, validator, root_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
