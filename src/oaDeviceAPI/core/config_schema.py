@@ -296,7 +296,8 @@ class AppConfig(BaseSettings):
             'dev': {'env_prefix': 'DEV_'},
         }
     
-    @root_validator
+    @model_validator(mode='before')
+    @classmethod
     def handle_legacy_fields(cls, values):
         """Handle legacy configuration fields for backward compatibility."""
         # Map legacy fields to new structure
