@@ -14,7 +14,7 @@ class PlatformManager:
     
     def __init__(self):
         self.platform = DETECTED_PLATFORM
-        self.config = get_platform_config()
+        self.config = get_platform_config(self.platform)
         logger.info(f"Detected platform: {self.platform}")
     
     def is_macos(self) -> bool:
