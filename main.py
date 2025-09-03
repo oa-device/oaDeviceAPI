@@ -15,19 +15,25 @@ from src.oaDeviceAPI.core.platform import platform_manager
 from src.oaDeviceAPI.middleware import TailscaleSubnetMiddleware
 
 # Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper()),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+from src.oaDeviceAPI.core.logging import setup_logging, RequestTrackingMiddleware
+from src.oaDeviceAPI.core.caching import setup_cache
+logging_manager = setup_logging(settings)
+cache_manager = setup_cache(settings)
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    logger.info(f"Starting oaDeviceAPI v{APP_VERSION}")
-    logger.info(f"Detected platform: {platform_manager.platform}")
-    logger.info(f"Available features: {platform_manager.get_available_features()}")
+    logger.info(
+        f"Starting oaDeviceAPI v{APP_VERSION}",
+        extra={
+            "event_type": "application_start",
+            "version": APP_VERSION,
+            "platform": platform_manager.platform,
+            "features": platform_manager.get_available_features()
+        }
+    )
     
     # Platform-specific setup
     if platform_manager.is_orangepi() and platform_manager.supports_feature("screenshot"):
@@ -56,6 +62,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add request tracking middleware (first)
+app.add_middleware(RequestTrackingMiddleware)
+
+# Add error handling middleware (before other middleware)
+from src.oaDeviceAPI.core.error_handler import ErrorHandlingMiddleware
+app.add_middleware(ErrorHandlingMiddleware, include_traceback=settings.dev.include_traceback)
 
 # Add Tailscale subnet restriction middleware
 app.add_middleware(TailscaleSubnetMiddleware, tailscale_subnet_str=settings.tailscale_subnet)

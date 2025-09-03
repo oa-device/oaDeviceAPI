@@ -8,7 +8,10 @@ to eliminate code duplication and ensure consistent behavior.
 import subprocess
 from functools import lru_cache
 from time import time
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Callable, TypeVar, Tuple, Union
+from pathlib import Path
+
+F = TypeVar('F', bound=Callable[..., Any])
 
 
 def run_command(cmd: List[str], env: Optional[Dict] = None, timeout: int = 30) -> str:
@@ -87,7 +90,7 @@ def run_command_detailed(command: List[str], timeout: int = 10) -> Dict[str, Any
         }
 
 
-def cache_with_ttl(ttl_seconds: int):
+def cache_with_ttl(ttl_seconds: int) -> Callable[[F], F]:
     """
     Decorator that implements an LRU cache with time-based invalidation.
     
@@ -146,7 +149,7 @@ def format_bytes(bytes_value: int) -> str:
     return f"{bytes_value:.1f} {size_names[i]}"
 
 
-def parse_version(version_string: str) -> tuple:
+def parse_version(version_string: str) -> Tuple[int, ...]:
     """
     Parse version string into comparable tuple.
     
@@ -164,7 +167,7 @@ def parse_version(version_string: str) -> tuple:
         return (0,)
 
 
-def safe_dict_get(dictionary: Dict, key: str, default: Any = None) -> Any:
+def safe_dict_get(dictionary: Dict[str, Any], key: str, default: Any = None) -> Any:
     """
     Safely get value from dictionary with nested key support.
     
