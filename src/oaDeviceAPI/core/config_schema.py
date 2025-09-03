@@ -199,31 +199,27 @@ class HealthConfig(BaseModel):
     disk_warning_threshold: float = Field(default=85, ge=0, le=100)
     disk_critical_threshold: float = Field(default=95, ge=0, le=100)
     
-    @model_validator(mode='before')
-    def validate_weights(cls, values):
+    @model_validator(mode='after')
+    def validate_weights(self):
         """Ensure health weights sum to 1.0."""
         weight_sum = (
-            values.get('cpu_weight', 0) +
-            values.get('memory_weight', 0) +
-            values.get('disk_weight', 0) +
-            values.get('tracker_weight', 0)
+            self.cpu_weight +
+            self.memory_weight +
+            self.disk_weight +
+            self.tracker_weight
         )
         
         if abs(weight_sum - 1.0) > 0.001:  # Allow small floating point errors
             raise ValueError(f"Health weights must sum to 1.0, got {weight_sum}")
         
-        return values
+        return self
     
-    @model_validator(mode='before')
-    @classmethod
-    def validate_thresholds(cls, values):
+    @model_validator(mode='after')
+    def validate_thresholds(self):
         """Ensure critical thresholds are higher than warning thresholds."""
         for component in ['cpu', 'memory', 'disk']:
-            warning_key = f'{component}_warning_threshold'
-            critical_key = f'{component}_critical_threshold'
-            
-            warning = values.get(warning_key, 0)
-            critical = values.get(critical_key, 100)
+            warning = getattr(self, f'{component}_warning_threshold')
+            critical = getattr(self, f'{component}_critical_threshold')
             
             if warning >= critical:
                 raise ValueError(
@@ -231,7 +227,7 @@ class HealthConfig(BaseModel):
                     f"critical threshold ({critical})"
                 )
         
-        return values
+        return self
 
 
 class DevConfig(BaseModel):
