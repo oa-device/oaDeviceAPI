@@ -1,36 +1,40 @@
+import json
 import os
 import re
-import json
 import subprocess
-import websocket
-from datetime import datetime, timezone
+from collections import deque
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, Optional
+
+import websocket
 from PIL import Image
-from oaDeviceAPI.core.config import settings
+
+from ....core.config import settings
+from ....core.utils import run_command
 
 # Constants with fallbacks
 PYTHON_CMD = getattr(settings, 'python_cmd', 'python3')
 PLAYER_ROOT = getattr(settings, 'player_root', '/home/orangepi/Orangead/player')
 GNOME_SCREENSHOT_CMD = getattr(settings, 'gnome_screenshot_cmd', 'gnome-screenshot')
-SCREENSHOT_DIR = getattr(settings, 'screenshot_dir', '/tmp/screenshots')
+SCREENSHOT_DIR = Path(getattr(settings, 'screenshot_dir', '/tmp/screenshots'))
 SCREENSHOT_MAX_HISTORY = getattr(settings, 'screenshot_max_history', 100)
 SCREENSHOT_RATE_LIMIT = getattr(settings, 'screenshot_rate_limit', 60)
-from ..services.utils import run_command
+
+
 # ScreenshotInfo class defined below for compatibility
 class ScreenshotInfo:
     def __init__(self, path: str, timestamp: str, size: int = 0):
         self.path = path
         self.timestamp = timestamp
         self.size = size
-from collections import deque
+
 
 # Global state for screenshots
 screenshots: deque[ScreenshotInfo] = deque(maxlen=SCREENSHOT_MAX_HISTORY)
 LAST_SCREENSHOT_FILE = SCREENSHOT_DIR / ".last_screenshot_time"
 
 
-def get_chrome_debug_ws_url() -> Optional[str]:
+def get_chrome_debug_ws_url() -> str | None:
     """Get the Chrome DevTools WebSocket URL."""
     try:
         # Get the WebSocket URL from Chrome's debug API
@@ -49,10 +53,10 @@ def get_chrome_debug_ws_url() -> Optional[str]:
     return None
 
 
-async def take_screenshot() -> Optional[Path]:
+async def take_screenshot() -> Path | None:
     """Take a screenshot using Chrome DevTools Protocol."""
     # Check rate limit
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     last_time = get_last_screenshot_time()
 
     if last_time:
@@ -90,7 +94,7 @@ async def take_screenshot() -> Optional[Path]:
             current_height = int(current_resolution[1])
 
             # Calculate scale factor to maintain aspect ratio
-            scale_factor = min(1920 / current_width, 1080 / current_height)
+            min(1920 / current_width, 1080 / current_height)
 
             # Take screenshot at original resolution
             ws.send(
@@ -178,15 +182,15 @@ async def take_screenshot() -> Optional[Path]:
         return None
 
 
-def get_last_screenshot_time() -> Optional[datetime]:
+def get_last_screenshot_time() -> datetime | None:
     """Get the last screenshot time from file."""
     try:
         if LAST_SCREENSHOT_FILE.exists():
             timestamp = float(LAST_SCREENSHOT_FILE.read_text().strip())
-            last_time = datetime.fromtimestamp(timestamp, timezone.utc)
+            last_time = datetime.fromtimestamp(timestamp, UTC)
 
             # Check if the timestamp is too old (e.g., from a previous session)
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             if (now - last_time).total_seconds() > 3600:  # If older than 1 hour
                 LAST_SCREENSHOT_FILE.unlink(missing_ok=True)
                 return None
@@ -205,7 +209,7 @@ def set_last_screenshot_time(timestamp: datetime) -> None:
         print(f"Error saving timestamp: {e}")
 
 
-def get_display_info() -> Dict:
+def get_display_info() -> dict:
     """Get display configuration and status."""
     try:
         # Set up environment for DBUS

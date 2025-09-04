@@ -1,13 +1,12 @@
 """macOS screenshot service implementation."""
 
-from typing import Optional
-from ....core.interfaces import ScreenshotServiceInterface
+
 
 
 class MacOSScreenshotService:
     """macOS screenshot service (not supported)."""
 
-    async def capture_screenshot(self) -> Optional[bytes]:
+    async def capture_screenshot(self) -> bytes | None:
         """Capture screenshot - not supported on macOS."""
         return None
 

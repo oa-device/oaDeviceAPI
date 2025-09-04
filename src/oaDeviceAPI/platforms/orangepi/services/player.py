@@ -1,21 +1,19 @@
 import os
-import re
-import psutil
-from typing import Dict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from oaDeviceAPI.core.config import settings
+
+import psutil
+
+from ....core.config import settings
+from ....core.utils import run_command
 
 # Constants with fallbacks
 SYSTEMCTL_CMD = getattr(settings, 'systemctl_cmd', 'systemctl')
 PS_CMD = getattr(settings, 'ps_cmd', 'ps')
 PLAYER_ROOT = getattr(settings, 'player_root', '/home/orangepi/Orangead/player')
-from ..services.utils import run_command
-from ..services.display import get_display_info
-from ..services.system import get_service_info
 
 
-def check_player_status() -> Dict[str, str]:
+def check_player_status() -> dict[str, str]:
     """Check if the player is actually running in Chromium."""
     try:
         # Check if slideshow service is active
@@ -27,7 +25,8 @@ def check_player_status() -> Dict[str, str]:
             ps_output = run_command([PS_CMD, "aux"])
             chromium_running = "chromium-browser" in ps_output and "slideshow-player" in ps_output
 
-        # Get display status
+        # Get display status - import here to avoid circular dependency
+        from .display import get_display_info
         display_info = get_display_info()
 
         # Get process details if running
@@ -37,11 +36,11 @@ def check_player_status() -> Dict[str, str]:
             try:
                 for proc in psutil.process_iter(["pid", "cpu_percent", "memory_percent", "create_time"]):
                     if "chromium-browser" in proc.name():
-                        create_time = datetime.fromtimestamp(proc.create_time(), timezone.utc)
+                        create_time = datetime.fromtimestamp(proc.create_time(), UTC)
                         player_start_time = create_time.isoformat()
                         process_info = {
-                            "pid": proc.pid, 
-                            "cpu_usage": proc.cpu_percent(), 
+                            "pid": proc.pid,
+                            "cpu_usage": proc.cpu_percent(),
                             "memory_usage": proc.memory_percent(),
                             "start_time": player_start_time
                         }
@@ -61,15 +60,16 @@ def check_player_status() -> Dict[str, str]:
         return {"service_status": "unknown", "player_status": "unknown", "display_connected": False, "healthy": False, "error": str(e)}
 
 
-def get_deployment_info() -> Dict:
+def get_deployment_info() -> dict:
     """Get deployment information."""
     try:
         # Get current release info
         release_info = get_current_release()
         if not release_info:
-            return {"status": "unknown", "error": "Could not determine release path", "last_update": datetime.now(timezone.utc).isoformat()}
+            return {"status": "unknown", "error": "Could not determine release path", "last_update": datetime.now(UTC).isoformat()}
 
-        # Get service statuses
+        # Get service statuses - import here to avoid circular dependency
+        from .system import get_service_info
         services = {
             "slideshow": get_service_info("slideshow-player.service"),
             "watchdog": get_service_info("watchdog.service"),
@@ -77,15 +77,16 @@ def get_deployment_info() -> Dict:
         }
 
         # Get display information
+        from .display import get_display_info
         display = get_display_info()
 
         # Get last reboot time from psutil
         try:
             boot_timestamp = psutil.boot_time()
-            boot_datetime = datetime.fromtimestamp(boot_timestamp, timezone.utc)
+            boot_datetime = datetime.fromtimestamp(boot_timestamp, UTC)
             last_reboot = boot_datetime.isoformat()
         except Exception:
-            last_reboot = datetime.now(timezone.utc).isoformat()
+            last_reboot = datetime.now(UTC).isoformat()
 
         # Check last successful oasync
         last_sync = None
@@ -97,7 +98,7 @@ def get_deployment_info() -> Dict:
                 log_content = f.read()
                 if "Could not run oasetup" not in log_content and "Could not run oaplayer" not in log_content:
                     sync_time = datetime.fromtimestamp(os.path.getctime(latest_log))
-                    sync_time_utc = sync_time.astimezone(timezone.utc)
+                    sync_time_utc = sync_time.astimezone(UTC)
                     last_sync = sync_time_utc.isoformat()
                     last_sync_epoch = int(sync_time_utc.timestamp())
         except Exception:
@@ -117,7 +118,7 @@ def get_deployment_info() -> Dict:
             "status": "active" if service_status and display_status else "inactive",
             "version": version,
             "release_path": str(Path(PLAYER_ROOT) / release_info),
-            "last_update": datetime.now(timezone.utc).isoformat(),
+            "last_update": datetime.now(UTC).isoformat(),
             "last_reboot": last_reboot,
             "last_sync": last_sync,
             "last_sync_epoch": last_sync_epoch,
@@ -128,7 +129,7 @@ def get_deployment_info() -> Dict:
         # Remove None values
         return {k: v for k, v in deployment_info.items() if v is not None}
     except Exception as e:
-        return {"status": "unknown", "error": str(e), "last_update": datetime.now(timezone.utc).isoformat()}
+        return {"status": "unknown", "error": str(e), "last_update": datetime.now(UTC).isoformat()}
 
 
 def get_current_release() -> str:

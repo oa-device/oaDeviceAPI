@@ -5,13 +5,12 @@ Provides macOS-specific health monitoring capabilities using system tools
 and libraries available on macOS platforms.
 """
 
-from typing import Dict, Any
 import asyncio
-import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
+from ....core.exceptions import ErrorSeverity, ServiceError
 from ....core.interfaces import BaseHealthService, MetricsCollectorInterface
-from ....core.exceptions import ServiceError, ErrorSeverity
 from ....models.health_schemas import HealthMetrics, SystemInfo
 
 
@@ -46,7 +45,7 @@ class MacOSHealthService(BaseHealthService):
                 cpu=metrics_data.get('cpu', {}),
                 memory=metrics_data.get('memory', {}),
                 disk=metrics_data.get('disk', {}),
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 platform_specific=macos_specific
             )
 
@@ -79,7 +78,7 @@ class MacOSHealthService(BaseHealthService):
                 cpu_count=metrics_data.get('cpu', {}).get('count', 0),
                 memory_total=metrics_data.get('memory', {}).get('total', 0),
                 disk_total=metrics_data.get('disk', {}).get('total', 0),
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 platform_specific=macos_info
             )
 
@@ -99,7 +98,7 @@ class MacOSHealthService(BaseHealthService):
         """
         try:
             health_metrics = await self.get_health_metrics()
-            
+
             # Check critical macOS-specific health indicators
             cpu_healthy = health_metrics.cpu.get('usage_percent', 0) < 90
             memory_healthy = health_metrics.memory.get('usage_percent', 0) < 85
@@ -110,17 +109,17 @@ class MacOSHealthService(BaseHealthService):
         except Exception:
             return False
 
-    async def _get_macos_health_data(self) -> Dict[str, Any]:
+    async def _get_macos_health_data(self) -> dict[str, Any]:
         """Get macOS-specific health data."""
         health_data = {}
 
         try:
             # Get thermal state
             health_data['thermal'] = await self._get_thermal_state()
-            
+
             # Get power status
             health_data['power'] = await self._get_power_status()
-            
+
             # Get service status for key macOS services
             health_data['services'] = await self._get_service_status()
 
@@ -129,7 +128,7 @@ class MacOSHealthService(BaseHealthService):
 
         return health_data
 
-    async def _get_macos_system_info(self) -> Dict[str, Any]:
+    async def _get_macos_system_info(self) -> dict[str, Any]:
         """Get macOS-specific system information."""
         system_info = {}
 
@@ -151,7 +150,7 @@ class MacOSHealthService(BaseHealthService):
 
         return system_info
 
-    async def _get_thermal_state(self) -> Dict[str, Any]:
+    async def _get_thermal_state(self) -> dict[str, Any]:
         """Get macOS thermal state."""
         try:
             # Use pmset to check thermal conditions
@@ -160,7 +159,7 @@ class MacOSHealthService(BaseHealthService):
         except Exception:
             return {'available': False}
 
-    async def _get_power_status(self) -> Dict[str, Any]:
+    async def _get_power_status(self) -> dict[str, Any]:
         """Get macOS power management status."""
         try:
             # Use pmset to check power status
@@ -169,12 +168,12 @@ class MacOSHealthService(BaseHealthService):
         except Exception:
             return {'available': False}
 
-    async def _get_service_status(self) -> Dict[str, Any]:
+    async def _get_service_status(self) -> dict[str, Any]:
         """Get status of key macOS services."""
         services = {}
         key_services = [
             'com.orangead.deviceapi',
-            'com.orangead.tracker', 
+            'com.orangead.tracker',
             'com.orangead.parking-monitor'
         ]
 
@@ -226,7 +225,7 @@ class MacOSHealthService(BaseHealthService):
 
             return stdout.decode()
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise ServiceError(
                 f"Command {' '.join(command)} timed out after {timeout} seconds",
                 category="command_timeout",

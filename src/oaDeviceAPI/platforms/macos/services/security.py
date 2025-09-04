@@ -8,14 +8,11 @@ including FileVault, Gatekeeper, SIP, Firewall, and Security Updates.
 import json
 import os
 import re
-import subprocess
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 from .utils import run_command
 
 
-def check_filevault_status() -> Dict:
+def check_filevault_status() -> dict:
     """
     Check if FileVault is enabled on the system.
 
@@ -70,7 +67,7 @@ def check_filevault_status() -> Dict:
         return {"enabled": False, "status": "error", "error": str(e)}
 
 
-def check_gatekeeper_status() -> Dict:
+def check_gatekeeper_status() -> dict:
     """
     Check if Gatekeeper is enabled on the system.
 
@@ -120,7 +117,7 @@ def check_gatekeeper_status() -> Dict:
         return {"enabled": False, "status": "error", "error": str(e)}
 
 
-def check_sip_status() -> Dict:
+def check_sip_status() -> dict:
     """
     Check if System Integrity Protection (SIP) is enabled.
 
@@ -167,7 +164,7 @@ def check_sip_status() -> Dict:
         return {"enabled": False, "status": "error", "error": str(e)}
 
 
-def check_firewall_status() -> Dict:
+def check_firewall_status() -> dict:
     """
     Check if the macOS firewall is enabled.
 
@@ -236,7 +233,7 @@ def check_firewall_status() -> Dict:
         return {"enabled": False, "status": "error", "error": str(e)}
 
 
-def check_security_updates() -> Dict:
+def check_security_updates() -> dict:
     """
     Check for pending security updates.
 
@@ -360,7 +357,7 @@ def check_security_updates() -> Dict:
         }
 
 
-def check_secure_boot() -> Dict:
+def check_secure_boot() -> dict:
     """
     Check if Secure Boot is enabled (Apple Silicon and T2 Macs).
 
@@ -430,7 +427,7 @@ def check_secure_boot() -> Dict:
         return {"enabled": False, "status": "error", "error": str(e)}
 
 
-def get_security_overview() -> Dict:
+def get_security_overview() -> dict:
     """
     Get a comprehensive overview of macOS security settings.
 

@@ -1,12 +1,11 @@
 """OrangePi screenshot service implementation."""
 
-from typing import Optional
 
 
 class OrangePiScreenshotService:
     """OrangePi screenshot service."""
 
-    async def capture_screenshot(self) -> Optional[bytes]:
+    async def capture_screenshot(self) -> bytes | None:
         """Capture screenshot."""
         return b"placeholder_screenshot_data"  # Placeholder
 

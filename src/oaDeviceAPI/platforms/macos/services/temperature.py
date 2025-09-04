@@ -3,24 +3,23 @@
 import os
 import subprocess
 from datetime import datetime
-from typing import Dict, Optional
 
 from .utils import run_command
 
 
-def get_cpu_temperature() -> Optional[float]:
+def get_cpu_temperature() -> float | None:
     """Get real CPU temperature using smctemp binary via Apple SMC."""
     try:
         # Path to smctemp binary (integrated into oaDeviceAPI)
         smctemp_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "bin", "macos", "smctemp")
-        
+
         # Fallback paths if not found in expected location
         fallback_paths = [
             "/usr/local/bin/smctemp",
             os.path.expanduser("~/orangead/macos-api/macos_api/bin/smctemp"),
             "smctemp"  # If it's in PATH
         ]
-        
+
         # Find available smctemp binary
         binary_path = None
         if os.path.exists(smctemp_path) and os.access(smctemp_path, os.X_OK):
@@ -30,15 +29,15 @@ def get_cpu_temperature() -> Optional[float]:
                 if os.path.exists(path) and os.access(path, os.X_OK):
                     binary_path = path
                     break
-        
+
         if not binary_path:
             # No fallback - return None if smctemp not available
             return None
-        
+
         # Run smctemp to get real temperature
         # Try different temperature sensors for M1/M2 Macs (prioritize CPU core temperatures)
         temp_sensors = ["Te05", "Te06", "Ts0C", "Ts0D", "-c"]
-        
+
         for sensor in temp_sensors:
             try:
                 if sensor == "-c":
@@ -55,7 +54,7 @@ def get_cpu_temperature() -> Optional[float]:
                                 return float(temp_str)
                             break
                     continue
-                
+
                 # Parse output for -c flag (CPU temperature)
                 if output and output != "":
                     # Output like "+45.6°C" or just "45.6"
@@ -64,28 +63,28 @@ def get_cpu_temperature() -> Optional[float]:
                         return float(temp_str)
             except (ValueError, subprocess.TimeoutExpired):
                 continue
-        
+
         return None
-    
+
     except Exception:
         return None
 
 
-def get_all_temperatures() -> Dict[str, float]:
+def get_all_temperatures() -> dict[str, float]:
     """Get all available temperature sensors from SMC."""
     temperatures = {}
-    
+
     try:
         # Path to smctemp binary
         smctemp_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "bin", "macos", "smctemp")
-        
+
         # Fallback paths if not found in expected location
         fallback_paths = [
             "/usr/local/bin/smctemp",
             os.path.expanduser("~/orangead/macos-api/macos_api/bin/smctemp"),
             "smctemp"  # If it's in PATH
         ]
-        
+
         # Find available smctemp binary
         binary_path = None
         if os.path.exists(smctemp_path) and os.access(smctemp_path, os.X_OK):
@@ -95,13 +94,13 @@ def get_all_temperatures() -> Dict[str, float]:
                 if os.path.exists(path) and os.access(path, os.X_OK):
                     binary_path = path
                     break
-        
+
         if not binary_path:
             return temperatures
-        
+
         # Get all temperature sensors
         output = run_command([binary_path, "-l"])
-        
+
         for line in output.split('\n'):
             if line.strip() and "°C" in line:
                 parts = line.split()
@@ -112,25 +111,25 @@ def get_all_temperatures() -> Dict[str, float]:
                         temperatures[sensor_name] = float(temp_str)
                     except ValueError:
                         continue
-    
+
     except Exception:
         pass
-    
+
     return temperatures
 
 
-def get_temperature_metrics() -> Dict:
+def get_temperature_metrics() -> dict:
     """Get comprehensive temperature metrics for macOS devices."""
     try:
         # Get CPU temperature
         cpu_temp = get_cpu_temperature()
-        
+
         # Get all available temperatures
         all_temps = get_all_temperatures()
-        
+
         # Calculate statistics if we have temperature data
         temp_values = list(all_temps.values()) if all_temps else []
-        
+
         return {
             "cpu": {
                 "celsius": cpu_temp,
@@ -151,7 +150,7 @@ def get_temperature_metrics() -> Dict:
             },
             "timestamp": datetime.now().isoformat()
         }
-    
+
     except Exception as e:
         return {
             "error": str(e),

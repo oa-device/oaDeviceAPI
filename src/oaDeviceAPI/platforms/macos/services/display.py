@@ -1,17 +1,9 @@
 import json
-import os
-import re
 import subprocess
-import time
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
-
-from ....core.config import PYTHON_CMD, TRACKER_ROOT
-from ..services.utils import run_command
 
 
-def get_display_info() -> Dict:
+def get_display_info() -> dict:
     """Get display configuration and status for macOS.
 
     This function uses multiple methods to detect displays and determine
@@ -138,24 +130,24 @@ class CGRect(Structure):
 try:
     # Load CoreGraphics framework
     core_graphics = cdll.LoadLibrary("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
-    
+
     # Get number of displays
     CGGetActiveDisplayList = core_graphics.CGGetActiveDisplayList
     CGGetActiveDisplayList.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
     CGGetActiveDisplayList.restype = c_int32
-    
+
     # Get display bounds
     CGDisplayBounds = core_graphics.CGDisplayBounds
     CGDisplayBounds.argtypes = [c_int32]
     CGDisplayBounds.restype = CGRect
-    
+
     # Get active displays
     max_displays = 16
     display_count = c_int32(0)
     display_list = (c_int32 * max_displays)()
-    
+
     result = CGGetActiveDisplayList(max_displays, display_list, display_count)
-    
+
     if result == 0 and display_count.value > 0:
         displays = []
         for i in range(display_count.value):
@@ -170,11 +162,11 @@ try:
                     "height": bounds.height
                 }
             })
-        
+
         print(json.dumps({"success": True, "displays": displays, "count": display_count.value}))
     else:
         print(json.dumps({"success": False, "error": "No displays found"}))
-        
+
 except Exception as e:
     print(json.dumps({"success": False, "error": str(e)}))
 """

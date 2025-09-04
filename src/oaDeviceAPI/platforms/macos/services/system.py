@@ -1,18 +1,16 @@
 import os
 import platform
 import re
-import subprocess
-from datetime import datetime, timezone
-from typing import Dict
+from datetime import UTC, datetime
 
 import psutil
 
-from ....core.config import LAUNCHCTL_CMD, PS_CMD, TRACKER_ROOT
-from .utils import run_command
+from ....core.config import LAUNCHCTL_CMD, TRACKER_ROOT
 from .temperature import get_temperature_metrics
+from .utils import run_command
 
 
-def get_system_metrics() -> Dict:
+def get_system_metrics() -> dict:
     """Get comprehensive system metrics including CPU, memory, disk, and network usage."""
     try:
         # Get base metrics (keeping existing structure)
@@ -129,7 +127,7 @@ def get_system_metrics() -> Dict:
         }
 
 
-def get_service_info(service_name: str) -> Dict:
+def get_service_info(service_name: str) -> dict:
     """Get detailed information about a launchd service."""
     info = {
         "status": "unknown",
@@ -172,7 +170,7 @@ def get_service_info(service_name: str) -> Dict:
     return info
 
 
-def get_device_info() -> Dict[str, str]:
+def get_device_info() -> dict[str, str]:
     """Get device type and series based on hostname and check if headless."""
     hostname = platform.node().lower()
 
@@ -202,7 +200,7 @@ def get_device_info() -> Dict[str, str]:
     }
 
 
-def get_version_info() -> Dict:
+def get_version_info() -> dict:
     """Get system and tracker version information."""
     try:
         # Get system info using platform module
@@ -247,7 +245,7 @@ def get_version_info() -> Dict:
         # Calculate uptime from boot_time
         try:
             boot_timestamp = psutil.boot_time()
-            current_timestamp = datetime.now(timezone.utc).timestamp()
+            current_timestamp = datetime.now(UTC).timestamp()
             uptime_seconds = int(current_timestamp - boot_timestamp)
 
             # Format uptime in a human-readable format
@@ -259,7 +257,7 @@ def get_version_info() -> Dict:
                 "seconds": uptime_seconds,
                 "formatted": f"{days}d {hours}h {minutes}m {seconds}s",
                 "boot_time": datetime.fromtimestamp(
-                    boot_timestamp, timezone.utc
+                    boot_timestamp, UTC
                 ).isoformat(),
             }
         except Exception as e:

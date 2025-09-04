@@ -1,8 +1,5 @@
 import os
-import re
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict
+from datetime import UTC, datetime
 
 import psutil
 
@@ -12,7 +9,7 @@ from ..services.system import get_service_info
 from ..services.utils import run_command
 
 
-def check_tracker_status() -> Dict[str, str]:
+def check_tracker_status() -> dict[str, str]:
     """Check if the oaTracker is running."""
     try:
         # Check if tracker service is active (assuming it will be named com.orangead.tracker)
@@ -38,7 +35,7 @@ def check_tracker_status() -> Dict[str, str]:
                 ):
                     if "oaTracker" in proc.name():
                         create_time = datetime.fromtimestamp(
-                            proc.create_time(), timezone.utc
+                            proc.create_time(), UTC
                         )
                         tracker_start_time = create_time.isoformat()
                         process_info = {
@@ -69,7 +66,7 @@ def check_tracker_status() -> Dict[str, str]:
         }
 
 
-def get_deployment_info() -> Dict:
+def get_deployment_info() -> dict:
     """Get deployment information for the tracker."""
     try:
         # Get service statuses
@@ -84,10 +81,10 @@ def get_deployment_info() -> Dict:
         # Get last reboot time from psutil
         try:
             boot_timestamp = psutil.boot_time()
-            boot_datetime = datetime.fromtimestamp(boot_timestamp, timezone.utc)
+            boot_datetime = datetime.fromtimestamp(boot_timestamp, UTC)
             last_reboot = boot_datetime.isoformat()
         except Exception:
-            last_reboot = datetime.now(timezone.utc).isoformat()
+            last_reboot = datetime.now(UTC).isoformat()
 
         # Get tracker version
         version = "unknown"
@@ -105,7 +102,7 @@ def get_deployment_info() -> Dict:
                 if sync_logs:
                     latest_log = max(sync_logs, key=os.path.getctime)
                     sync_time = datetime.fromtimestamp(os.path.getctime(latest_log))
-                    sync_time_utc = sync_time.astimezone(timezone.utc)
+                    sync_time_utc = sync_time.astimezone(UTC)
                     last_sync = sync_time_utc.isoformat()
                     last_sync_epoch = int(sync_time_utc.timestamp())
             except Exception:
@@ -118,7 +115,7 @@ def get_deployment_info() -> Dict:
             "status": "active" if service_status else "inactive",
             "version": version,
             "install_path": str(TRACKER_ROOT),
-            "last_update": datetime.now(timezone.utc).isoformat(),
+            "last_update": datetime.now(UTC).isoformat(),
             "last_reboot": last_reboot,
             "last_sync": last_sync,
             "last_sync_epoch": last_sync_epoch,
@@ -132,5 +129,5 @@ def get_deployment_info() -> Dict:
         return {
             "status": "unknown",
             "error": str(e),
-            "last_update": datetime.now(timezone.utc).isoformat(),
+            "last_update": datetime.now(UTC).isoformat(),
         }

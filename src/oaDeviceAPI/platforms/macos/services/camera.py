@@ -10,14 +10,11 @@ Implements MJPEG streaming functionality for camera feeds.
 import hashlib
 import json
 import logging
-import re
-import shlex
 import subprocess
 import threading
 import time
-import uuid
+from collections.abc import Generator
 from datetime import datetime
-from typing import Dict, Generator, Iterator, List, Optional
 
 # Graceful handling of optional dependencies
 try:
@@ -37,7 +34,7 @@ from ....models.schemas import CameraInfo
 logger = logging.getLogger(__name__)
 
 
-def get_camera_list() -> List[CameraInfo]:
+def get_camera_list() -> list[CameraInfo]:
     """
     Get a list of all available cameras on the macOS system.
 
@@ -100,7 +97,7 @@ def get_camera_list() -> List[CameraInfo]:
         return []
 
 
-def get_camera_by_id(camera_id: str) -> Optional[CameraInfo]:
+def get_camera_by_id(camera_id: str) -> CameraInfo | None:
     """
     Get a specific camera by its ID.
 
@@ -119,7 +116,7 @@ def get_camera_by_id(camera_id: str) -> Optional[CameraInfo]:
     return None
 
 
-def check_camera_availability() -> Dict:
+def check_camera_availability() -> dict:
     """
     Check if the Tracker's camera feed is available.
 
@@ -188,17 +185,17 @@ def _get_camera_index(camera_id: str) -> int:
 def get_camera_capture(camera_id: str):
     """
     Get a VideoCapture object for the specified camera.
-    
+
     Args:
         camera_id: The ID of the camera to capture from
-        
+
     Returns:
         cv2.VideoCapture or None: Video capture object, or None if cv2 not available
     """
     if not CV2_AVAILABLE:
         logger.error("OpenCV (cv2) not available - cannot create camera capture")
         return None
-    
+
     try:
         # Convert camera_id to integer if it's numeric
         if camera_id.isdigit():
@@ -207,25 +204,25 @@ def get_camera_capture(camera_id: str):
             # For non-numeric IDs, try to find the camera and use index 0 as fallback
             cameras = get_camera_list()
             capture_index = 0  # Default to first camera
-            
+
             for i, camera in enumerate(cameras):
                 if camera.id == camera_id:
                     capture_index = i
                     break
-        
+
         capture = cv2.VideoCapture(capture_index)
-        
+
         if not capture.isOpened():
             logger.error(f"Failed to open camera {camera_id} at index {capture_index}")
             return None
-            
+
         # Set some basic properties
         capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         capture.set(cv2.CAP_PROP_FPS, 30)
-        
+
         return capture
-    
+
     except Exception as e:
         logger.error(f"Error creating camera capture for {camera_id}: {str(e)}")
         return None
@@ -234,38 +231,38 @@ def get_camera_capture(camera_id: str):
 def generate_mjpeg_stream(capture) -> Generator[bytes, None, None]:
     """
     Generate MJPEG stream from camera capture.
-    
+
     Args:
         capture: cv2.VideoCapture object
-        
+
     Yields:
         bytes: MJPEG frame data
     """
     if not CV2_AVAILABLE or capture is None:
         logger.error("OpenCV not available or invalid capture - cannot generate stream")
         return
-    
+
     try:
         while True:
             ret, frame = capture.read()
             if not ret:
                 logger.warning("Failed to read frame from camera")
                 break
-            
+
             # Encode frame as JPEG
             _, buffer = cv2.imencode('.jpg', frame)
             frame_bytes = buffer.tobytes()
-            
+
             # Yield frame in MJPEG format
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-            
+
             # Small delay to prevent overwhelming the client
             time.sleep(0.033)  # ~30 FPS
-    
+
     except Exception as e:
         logger.error(f"Error in MJPEG stream generation: {str(e)}")
-    
+
     finally:
         if capture:
             capture.release()
@@ -274,25 +271,25 @@ def generate_mjpeg_stream(capture) -> Generator[bytes, None, None]:
 def generate_mjpeg_frames(camera_id: str) -> Generator[bytes, None, None]:
     """
     Generate MJPEG frames for a specific camera ID.
-    
+
     This is the main function expected by the router that handles
     the complete workflow from camera_id to MJPEG stream.
-    
+
     Args:
         camera_id: The ID of the camera to stream from
-        
+
     Yields:
         bytes: MJPEG frame data
     """
     if not CV2_AVAILABLE:
         logger.error("OpenCV (cv2) not available - cannot generate MJPEG frames")
         return
-    
+
     capture = get_camera_capture(camera_id)
     if capture is None:
         logger.error(f"Failed to get camera capture for camera {camera_id}")
         return
-    
+
     # Use the existing stream generator
     yield from generate_mjpeg_stream(capture)
 
@@ -300,10 +297,10 @@ def generate_mjpeg_frames(camera_id: str) -> Generator[bytes, None, None]:
 def release_camera_capture(camera_id: str) -> None:
     """
     Release camera capture resources for a specific camera.
-    
+
     This function is called by the router as a background task
     to ensure proper cleanup of camera resources.
-    
+
     Args:
         camera_id: The ID of the camera to release
     """

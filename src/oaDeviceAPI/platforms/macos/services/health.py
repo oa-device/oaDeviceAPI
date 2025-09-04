@@ -1,11 +1,10 @@
-from typing import Dict
 
 from ....core.config import HEALTH_SCORE_THRESHOLDS, HEALTH_SCORE_WEIGHTS
 
 
 def calculate_health_score(
-    metrics: Dict, tracker_status: Dict, display_info: Dict
-) -> Dict[str, float]:
+    metrics: dict, tracker_status: dict, display_info: dict
+) -> dict[str, float]:
     """Calculate health scores for different components and overall system health."""
     try:
         scores = {}
@@ -75,7 +74,7 @@ def calculate_health_score(
         }
 
 
-def get_health_summary(metrics: Dict, tracker_status: Dict, display_info: Dict) -> Dict:
+def get_health_summary(metrics: dict, tracker_status: dict, display_info: dict) -> dict:
     """Get a summary of system health including recommendations."""
     health_scores = calculate_health_score(metrics, tracker_status, display_info)
 

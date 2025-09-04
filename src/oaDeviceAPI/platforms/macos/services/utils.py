@@ -5,23 +5,16 @@ This module now imports shared utilities from core.utils and provides
 macOS-specific utility functions only.
 """
 
-from typing import Dict, List, Optional
-from oaDeviceAPI.core.utils import (
-    run_command,
-    cache_with_ttl,
-    format_bytes,
-    parse_version,
-    safe_dict_get
-)
+from oaDeviceAPI.core.utils import run_command
 
 
-def get_system_profiler_info(data_type: str) -> Dict:
+def get_system_profiler_info(data_type: str) -> dict:
     """
     Get system information using system_profiler command.
-    
+
     Args:
         data_type: Type of data to retrieve (e.g., 'SPHardwareDataType')
-        
+
     Returns:
         Parsed system profiler data
     """
@@ -35,13 +28,13 @@ def get_system_profiler_info(data_type: str) -> Dict:
     return {}
 
 
-def get_launchd_service_status(service_name: str) -> Dict:
+def get_launchd_service_status(service_name: str) -> dict:
     """
     Get macOS LaunchAgent/LaunchDaemon service status.
-    
+
     Args:
         service_name: Name of the service to check
-        
+
     Returns:
         Service status information
     """
@@ -61,7 +54,7 @@ def get_launchd_service_status(service_name: str) -> Dict:
                     }
     except Exception:
         pass
-    
+
     return {
         'pid': None,
         'status': -1,

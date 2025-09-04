@@ -1,7 +1,5 @@
 import asyncio
 import logging
-import os
-from pathlib import Path
 
 from ....core.config import LAUNCHCTL_CMD
 
