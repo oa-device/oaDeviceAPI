@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
-from datetime import datetime, timezone
 from pathlib import Path
 
-from ..services.display import take_screenshot, get_screenshot_history
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
+
 # ScreenshotInfo handled in services/display.py
 from oaDeviceAPI.core.config import settings
+
+from ..services.display import get_screenshot_history, take_screenshot
 
 # Constants
 SCREENSHOT_RATE_LIMIT = getattr(settings, 'screenshot_rate_limit', 60)
@@ -18,11 +19,11 @@ async def get_latest_screenshot():
     screenshots = get_screenshot_history()
     if not screenshots:
         raise HTTPException(status_code=404, detail="No screenshots available")
-    
+
     latest = screenshots[-1]
     if not Path(latest.path).exists():
         raise HTTPException(status_code=404, detail="Screenshot file not found")
-    
+
     return FileResponse(latest.path)
 
 @router.get("/screenshots/history")
@@ -36,12 +37,12 @@ async def capture_screenshot():
     screenshot_path = await take_screenshot()
     if not screenshot_path:
         raise HTTPException(
-            status_code=429, 
+            status_code=429,
             detail=f"Please wait {SCREENSHOT_RATE_LIMIT} seconds between screenshots"
         )
-    
+
     return {
         "status": "success",
         "message": "Screenshot captured successfully",
         "path": str(screenshot_path)
-    } 
+    }

@@ -1,45 +1,43 @@
-import platform
-from datetime import datetime, timezone
-from typing import Dict
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-from ....core.config import APP_VERSION, settings
-from ....models.health_schemas import StandardizedErrorResponse, MacOSHealthResponse
+from ....core.config import settings
+from ....core.utils import cache_with_ttl
+from ....models.health_schemas import MacOSHealthResponse, StandardizedErrorResponse
 
 # Constants
 CACHE_TTL = getattr(settings, 'cache_ttl', 30)
 from ..services.display import get_display_info
 from ..services.health import get_health_summary
-from ..services.system import get_device_info, get_system_metrics, get_version_info
 from ..services.standardized_metrics import (
+    get_standardized_capabilities,
+    get_standardized_device_info,
     get_standardized_health_metrics,
     get_standardized_system_info,
-    get_standardized_device_info,
     get_standardized_version_info,
-    get_standardized_capabilities
 )
+from ..services.system import get_device_info, get_system_metrics
 from ..services.temperature import get_temperature_metrics
 from ..services.tracker import check_tracker_status, get_deployment_info
-from ..services.utils import cache_with_ttl
 
 router = APIRouter()
 
 
 # Cache expensive operations
 @cache_with_ttl(CACHE_TTL)
-def get_cached_metrics() -> Dict:
+def get_cached_metrics() -> dict:
     return get_system_metrics()
 
 
 @cache_with_ttl(CACHE_TTL)
-def get_cached_display_info() -> Dict:
+def get_cached_display_info() -> dict:
     return get_display_info()
 
 
 @cache_with_ttl(CACHE_TTL)
-def get_cached_deployment_info() -> Dict:
+def get_cached_deployment_info() -> dict:
     return get_deployment_info()
 
 
@@ -53,7 +51,7 @@ async def health_check():
         standardized_device = get_standardized_device_info()
         standardized_version = get_standardized_version_info()
         standardized_capabilities = get_standardized_capabilities()
-        
+
         # Use cached versions of expensive operations for additional data
         deployment = get_cached_deployment_info()
         display_info = get_cached_display_info()
@@ -61,7 +59,7 @@ async def health_check():
         device = get_device_info()
 
         # Get current time in UTC
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Determine basic status from tracker health (for backward compatibility)
         status = "online"
@@ -101,7 +99,7 @@ async def health_check():
             },
         }
     except Exception as e:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return JSONResponse(
             status_code=500,
             content=StandardizedErrorResponse(
@@ -133,11 +131,11 @@ async def temperature_metrics():
         temperature_data = get_temperature_metrics()
         return {
             "status": "success",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "data": temperature_data
         }
     except Exception as e:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return JSONResponse(
             status_code=500,
             content=StandardizedErrorResponse(

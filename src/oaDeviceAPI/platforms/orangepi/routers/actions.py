@@ -1,5 +1,6 @@
+
 from fastapi import APIRouter, HTTPException, status
-from typing import Optional
+
 from ..services.actions import ActionsService
 
 router = APIRouter(
@@ -47,10 +48,10 @@ async def get_display_config():
 
 @router.post("/display-setup")
 async def display_setup(
-    resolution: Optional[str] = None,
-    rate: Optional[int] = None, 
-    rotation: Optional[str] = None,
-    scale: Optional[float] = None
+    resolution: str | None = None,
+    rate: int | None = None,
+    rotation: str | None = None,
+    scale: float | None = None
 ):
     """
     Update display configuration and apply new settings.
@@ -59,7 +60,7 @@ async def display_setup(
     try:
         result = await actions_service.display_setup(
             resolution=resolution,
-            rate=rate, 
+            rate=rate,
             rotation=rotation,
             scale=scale
         )

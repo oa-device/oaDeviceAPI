@@ -6,13 +6,11 @@ Implements MJPEG streaming for camera feeds.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, status
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from ....models.schemas import CameraInfo, CameraListResponse, ErrorResponse
+from ....models.schemas import CameraListResponse
 from ..services.camera import (
     check_camera_availability,
     generate_mjpeg_frames,
