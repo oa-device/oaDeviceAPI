@@ -1,10 +1,11 @@
 """Pytest configuration and fixtures for oaDeviceAPI tests."""
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
-from fastapi.testclient import TestClient
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+from fastapi.testclient import TestClient
 
 # Add src to Python path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -18,7 +19,7 @@ def mock_macos_platform():
         yield
 
 
-@pytest.fixture  
+@pytest.fixture
 def mock_orangepi_platform():
     """Mock OrangePi platform detection."""
     with patch("src.oaDeviceAPI.core.config.detect_platform", return_value="orangepi"), \
@@ -28,7 +29,7 @@ def mock_orangepi_platform():
 
 @pytest.fixture
 def mock_generic_platform():
-    """Mock generic Linux platform detection.""" 
+    """Mock generic Linux platform detection."""
     with patch("src.oaDeviceAPI.core.config.detect_platform", return_value="linux"), \
          patch("src.oaDeviceAPI.core.config.DETECTED_PLATFORM", "linux"):
         yield
@@ -43,29 +44,29 @@ def mock_psutil():
          patch("psutil.net_io_counters") as mock_net, \
          patch("psutil.cpu_count", return_value=8), \
          patch("psutil.boot_time", return_value=1640995200.0):
-        
+
         # Configure mocks
         mock_mem.return_value = Mock(
-            percent=45.2, 
+            percent=45.2,
             total=8589934592,
             used=3885481984,
             available=4704452608
         )
-        
+
         mock_disk.return_value = Mock(
             percent=67.8,
-            total=499963174912, 
+            total=499963174912,
             used=338973696512,
             free=160989478400
         )
-        
+
         mock_net.return_value = Mock(
             bytes_sent=1024000,
             bytes_recv=2048000,
             packets_sent=500,
             packets_recv=750
         )
-        
+
         yield
 
 
@@ -86,7 +87,7 @@ def mock_system_commands():
          patch("socket.gethostname", return_value="test-device"), \
          patch("platform.platform", return_value="Test-Platform"), \
          patch("platform.machine", return_value="arm64"):
-        
+
         mock_run.return_value = Mock(
             returncode=0,
             stdout="Test kernel version",
@@ -105,11 +106,11 @@ def mock_external_services():
             "healthy": True,
             "model_name": "yolo11m.pt"
         }
-    
+
     mock_response = AsyncMock()
     mock_response.status = 200
     mock_response.json = mock_response_json
-    
+
     with patch("aiohttp.ClientSession.get") as mock_get:
         mock_get.return_value.__aenter__.return_value = mock_response
         yield mock_get
@@ -117,13 +118,13 @@ def mock_external_services():
 
 @pytest.fixture
 def test_client_macos(mock_macos_platform, mock_psutil, mock_service_checks, mock_system_commands):
-    """Test client with mocked macOS platform.""" 
+    """Test client with mocked macOS platform."""
     # Clear module cache to ensure fresh imports with mocked platform
     modules_to_clear = [m for m in sys.modules.keys() if m.startswith("main") or m.startswith("src.oaDeviceAPI")]
     for module in modules_to_clear:
         if module in sys.modules:
             del sys.modules[module]
-    
+
     # Import after mocking to ensure platform detection works
     from main import app
     return TestClient(app)
@@ -132,13 +133,13 @@ def test_client_macos(mock_macos_platform, mock_psutil, mock_service_checks, moc
 @pytest.fixture
 def test_client_orangepi(mock_orangepi_platform, mock_psutil, mock_service_checks, mock_system_commands):
     """Test client with mocked OrangePi platform."""
-    # Clear module cache to ensure fresh imports with mocked platform  
+    # Clear module cache to ensure fresh imports with mocked platform
     modules_to_clear = [m for m in sys.modules.keys() if m.startswith("main") or m.startswith("src.oaDeviceAPI")]
     for module in modules_to_clear:
         if module in sys.modules:
             del sys.modules[module]
-    
-    from main import app  
+
+    from main import app
     return TestClient(app)
 
 
@@ -160,7 +161,7 @@ def sample_health_data():
         "disk": {
             "usage_percent": 67.8,
             "total": 499963174912,
-            "used": 338973696512, 
+            "used": 338973696512,
             "free": 160989478400,
             "path": "/"
         },
@@ -185,7 +186,7 @@ def sample_device_info():
         },
         "orangepi": {
             "type": "OrangePi",
-            "series": "OrangePi 5B", 
+            "series": "OrangePi 5B",
             "hostname": "orangepi-001",
             "model": "OrangePi 5B"
         }
@@ -241,7 +242,7 @@ def mock_file_system():
          patch("pathlib.Path.read_text", return_value='{"test": "config"}'), \
          patch("pathlib.Path.write_text"), \
          patch("pathlib.Path.stat") as mock_stat:
-        
+
         # Mock file stats
         mock_stat.return_value = Mock(
             st_size=1024000,
@@ -249,7 +250,7 @@ def mock_file_system():
             st_atime=1640995200.0,
             st_ctime=1640995200.0
         )
-        
+
         yield
 
 
@@ -260,24 +261,24 @@ def mock_network_services():
          patch("socket.getfqdn", return_value="test-device.local"), \
          patch("psutil.net_if_addrs") as mock_addrs, \
          patch("psutil.net_if_stats") as mock_stats:
-        
+
         # Mock network interface data
         mock_addrs.return_value = {
             "en0": [Mock(family=2, address="192.168.1.100")],
             "lo0": [Mock(family=2, address="127.0.0.1")]
         }
-        
+
         mock_stats.return_value = {
             "en0": Mock(isup=True, speed=1000),
             "lo0": Mock(isup=True, speed=0)
         }
-        
+
         yield
 
 
 @pytest.fixture
 def mock_temperature_sensors():
-    """Mock temperature sensor readings.""" 
+    """Mock temperature sensor readings."""
     with patch("subprocess.run") as mock_temp_run:
         # Mock temperature command output
         mock_temp_run.return_value = Mock(
@@ -295,30 +296,30 @@ def performance_test_env():
          patch("psutil.virtual_memory") as mock_mem, \
          patch("psutil.disk_usage") as mock_disk, \
          patch("subprocess.run") as mock_run:
-        
+
         # Fast mock responses
         mock_mem.return_value = Mock(percent=30.0, total=8000000000, used=2400000000, available=5600000000)
         mock_disk.return_value = Mock(percent=40.0, total=500000000000, used=200000000000, free=300000000000)
         mock_run.return_value = Mock(returncode=0, stdout="fast_response")
-        
+
         yield
 
 
 @pytest.fixture(scope="session")
 def test_data_directory():
     """Create temporary directory for test data."""
-    import tempfile
     import shutil
-    
+    import tempfile
+
     temp_dir = Path(tempfile.mkdtemp(prefix="oaDeviceAPI_test_"))
-    
+
     # Create subdirectories
     (temp_dir / "screenshots").mkdir(exist_ok=True)
     (temp_dir / "configs").mkdir(exist_ok=True)
     (temp_dir / "logs").mkdir(exist_ok=True)
-    
+
     yield temp_dir
-    
+
     # Cleanup after tests
     shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -329,32 +330,32 @@ def error_simulation():
     class ErrorSimulator:
         def __init__(self):
             self.active_patches = []
-        
+
         def simulate_service_down(self, service_name):
             """Simulate a service being down."""
             if service_name == "tracker":
-                patch_obj = patch("aiohttp.ClientSession.get", 
+                patch_obj = patch("aiohttp.ClientSession.get",
                                 side_effect=ConnectionRefusedError("Service down"))
             elif service_name == "system_commands":
-                patch_obj = patch("subprocess.run", 
+                patch_obj = patch("subprocess.run",
                                 side_effect=FileNotFoundError("Command not found"))
             elif service_name == "psutil":
-                patch_obj = patch("psutil.cpu_percent", 
+                patch_obj = patch("psutil.cpu_percent",
                                 side_effect=Exception("System monitoring failed"))
             else:
-                patch_obj = patch("subprocess.run", 
+                patch_obj = patch("subprocess.run",
                                 side_effect=subprocess.SubprocessError("Service error"))
-            
+
             patch_obj.start()
             self.active_patches.append(patch_obj)
             return patch_obj
-        
+
         def cleanup(self):
             """Clean up all active patches."""
             for patch_obj in self.active_patches:
                 patch_obj.stop()
             self.active_patches = []
-    
+
     simulator = ErrorSimulator()
     yield simulator
     simulator.cleanup()
@@ -367,15 +368,15 @@ def security_test_env():
     with patch("subprocess.run") as mock_run, \
          patch("os.system") as mock_system, \
          patch("os.popen") as mock_popen:
-        
+
         # Safe mock responses
         mock_run.return_value = Mock(returncode=0, stdout="safe_output", stderr="")
         mock_system.return_value = 0
         mock_popen.return_value = Mock(read=lambda: "safe_output")
-        
+
         yield {
             "subprocess_run": mock_run,
-            "os_system": mock_system, 
+            "os_system": mock_system,
             "os_popen": mock_popen
         }
 
@@ -390,11 +391,11 @@ def load_test_env():
         "disk_percent": 40.0,
         "service_active": True
     }
-    
+
     with patch("psutil.cpu_percent", return_value=fast_mocks["cpu_percent"]), \
          patch("psutil.virtual_memory") as mock_mem, \
          patch("subprocess.run") as mock_run:
-        
+
         # Fast, consistent responses
         mock_mem.return_value = Mock(
             percent=fast_mocks["memory_percent"],
@@ -402,12 +403,12 @@ def load_test_env():
             used=2400000000,
             available=5600000000
         )
-        
+
         mock_run.return_value = Mock(
             returncode=0,
             stdout="active" if fast_mocks["service_active"] else "inactive"
         )
-        
+
         yield fast_mocks
 
 
@@ -425,45 +426,45 @@ def integration_test_env(mock_psutil, mock_service_checks, mock_system_commands,
 
 @pytest.fixture
 def platform_switching():
-    """Fixture to help switch between platform contexts in tests.""" 
+    """Fixture to help switch between platform contexts in tests."""
     class PlatformSwitcher:
         def __init__(self):
             self.current_patches = []
-        
+
         def switch_to_macos(self):
             """Switch to macOS platform context."""
             self.cleanup()
-            
+
             patches = [
                 patch("src.oaDeviceAPI.core.config.detect_platform", return_value="macos"),
                 patch("src.oaDeviceAPI.core.config.DETECTED_PLATFORM", "macos"),
                 patch("platform.system", return_value="Darwin")
             ]
-            
+
             for p in patches:
                 p.start()
                 self.current_patches.append(p)
-        
+
         def switch_to_orangepi(self):
             """Switch to OrangePi platform context."""
             self.cleanup()
-            
+
             patches = [
                 patch("src.oaDeviceAPI.core.config.detect_platform", return_value="orangepi"),
                 patch("src.oaDeviceAPI.core.config.DETECTED_PLATFORM", "orangepi"),
                 patch("platform.system", return_value="Linux")
             ]
-            
+
             for p in patches:
                 p.start()
                 self.current_patches.append(p)
-        
+
         def cleanup(self):
             """Clean up current patches."""
             for patch_obj in self.current_patches:
                 patch_obj.stop()
             self.current_patches = []
-    
+
     switcher = PlatformSwitcher()
     yield switcher
     switcher.cleanup()
@@ -473,7 +474,7 @@ def platform_switching():
 def pytest_configure(config):
     """Configure pytest with custom markers."""
     config.addinivalue_line(
-        "markers", 
+        "markers",
         "performance: marks tests as performance tests (may be slow)"
     )
     config.addinivalue_line(
@@ -499,7 +500,7 @@ def generate_test_data():
                 "disk": {"usage_percent": disk_percent, "total": 500000000000},
                 "network": {"bytes_sent": 1000000, "bytes_received": 2000000}
             }
-        
+
         @staticmethod
         def device_info(platform="macos", hostname="test-device"):
             if platform == "macos":
@@ -511,12 +512,12 @@ def generate_test_data():
                 }
             else:  # orangepi
                 return {
-                    "type": "OrangePi", 
+                    "type": "OrangePi",
                     "series": "OrangePi 5B",
                     "hostname": hostname,
                     "model": "Orange Pi 5B"
                 }
-        
+
         @staticmethod
         def service_status(healthy=True, status="active"):
             return {
@@ -524,7 +525,7 @@ def generate_test_data():
                 "service_status": status,
                 "running": healthy
             }
-    
+
     return TestDataGenerator()
 
 
@@ -534,7 +535,7 @@ def test_isolation():
     """Ensure test isolation by clearing caches and state."""
     # Clear any global state that might affect tests
     yield
-    
+
     # Cleanup after each test
     import gc
     gc.collect()
@@ -542,16 +543,16 @@ def test_isolation():
 
 # Skip markers for incomplete implementations
 def pytest_collection_modifyitems(config, items):
-    """Modify collected test items to add skip markers for known issues.""" 
+    """Modify collected test items to add skip markers for known issues."""
     # Skip tests that require services not yet implemented
     skip_missing_services = pytest.mark.skip(reason="Service implementation pending")
-    
+
     for item in items:
         # Skip tests for services that may not be fully implemented yet
         if "camguard" in item.name and "test_" in item.name:
             # Only skip if the test is expected to fail due to missing implementation
             pass
-            
+
         # Skip performance tests in CI/automated environments unless specifically requested
         if "performance" in item.keywords:
             if not config.getoption("--run-performance", default=False):
@@ -562,14 +563,14 @@ def pytest_addoption(parser):
     """Add custom command line options."""
     parser.addoption(
         "--run-performance",
-        action="store_true", 
+        action="store_true",
         default=False,
         help="Run performance tests (may be slow)"
     )
     parser.addoption(
         "--run-security",
         action="store_true",
-        default=False, 
+        default=False,
         help="Run security tests (may attempt various attacks)"
     )
     parser.addoption(
