@@ -1,28 +1,27 @@
 """
 Application bootstrap and dependency injection setup.
 
-Handles the initialization of the dependency injection container and 
+Handles the initialization of the dependency injection container and
 configuration of all services based on the detected platform.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any
 
-from .container import container, ServiceContainer
-from .service_factory import ServiceFactoryRegistry, setup_dependency_injection
-from .interfaces import (
-    PlatformManagerInterface,
-    MetricsCollectorInterface,
-    HealthServiceInterface,
-    ConfigurationServiceInterface,
-    CachingServiceInterface
-)
-from .unified_metrics import UnifiedMetricsCollector, MetricsFacade
-from .health_service import UnifiedHealthService
 from .caching import CacheManager
-from .exceptions import ServiceError, ErrorSeverity
 from .config import settings
-
+from .container import ServiceContainer, container
+from .exceptions import ErrorSeverity, ServiceError
+from .health_service import UnifiedHealthService
+from .interfaces import (
+    CachingServiceInterface,
+    ConfigurationServiceInterface,
+    HealthServiceInterface,
+    MetricsCollectorInterface,
+    PlatformManagerInterface,
+)
+from .service_factory import setup_dependency_injection
+from .unified_metrics import MetricsFacade, UnifiedMetricsCollector
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +69,7 @@ class ApplicationBootstrap:
 
             self._initialized = True
             logger.info("Application bootstrap completed successfully")
-            
+
             return self.container
 
         except Exception as e:
@@ -103,10 +102,10 @@ class ApplicationBootstrap:
 
         # Create unified metrics collector
         unified_collector = UnifiedMetricsCollector(platform_collector)
-        
+
         # Create metrics facade
         metrics_facade = MetricsFacade(unified_collector)
-        
+
         # Register metrics facade
         self.container.register_instance(MetricsFacade, metrics_facade)
 
@@ -142,7 +141,7 @@ class ApplicationBootstrap:
 
         logger.debug("Service validation completed")
 
-    def get_service_registry_info(self) -> Dict[str, Any]:
+    def get_service_registry_info(self) -> dict[str, Any]:
         """
         Get information about registered services.
 
@@ -150,17 +149,17 @@ class ApplicationBootstrap:
             Dictionary with service registry information
         """
         registered_services = self.container.get_registered_services()
-        
+
         return {
             'initialized': self._initialized,
             'registered_services': {
-                interface.__name__: impl.__name__ 
+                interface.__name__: impl.__name__
                 for interface, impl in registered_services.items()
             },
             'service_count': len(registered_services),
             'platform': getattr(
                 self.container.get(PlatformManagerInterface) if self.container.is_registered(PlatformManagerInterface) else None,
-                'platform', 
+                'platform',
                 'unknown'
             )
         }
@@ -194,7 +193,7 @@ def get_service_container() -> ServiceContainer:
     return bootstrap.container
 
 
-def get_bootstrap_info() -> Dict[str, Any]:
+def get_bootstrap_info() -> dict[str, Any]:
     """Get bootstrap initialization information."""
     return bootstrap.get_service_registry_info()
 
@@ -203,7 +202,7 @@ def get_bootstrap_info() -> Dict[str, Any]:
 def inject_services(func):
     """
     Decorator for automatic dependency injection in route handlers.
-    
+
     Usage:
         @inject_services
         async def health_endpoint(health_service: HealthServiceInterface):

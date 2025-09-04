@@ -6,11 +6,10 @@ and testability through dependency injection.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, Protocol
-from pathlib import Path
+from typing import Any, Protocol
 
-from ..models.health_schemas import HealthMetrics, SystemInfo
-from .config_schema import Platform
+from ..models.health_schemas import BaseHealthMetrics as HealthMetrics
+from ..models.health_schemas import BaseSystemInfo as SystemInfo
 
 
 class HealthServiceInterface(Protocol):
@@ -32,19 +31,19 @@ class HealthServiceInterface(Protocol):
 class MetricsCollectorInterface(Protocol):
     """Protocol for metrics collection services."""
 
-    async def collect_cpu_metrics(self) -> Dict[str, Any]:
+    async def collect_cpu_metrics(self) -> dict[str, Any]:
         """Collect CPU usage metrics."""
         ...
 
-    async def collect_memory_metrics(self) -> Dict[str, Any]:
+    async def collect_memory_metrics(self) -> dict[str, Any]:
         """Collect memory usage metrics."""
         ...
 
-    async def collect_disk_metrics(self) -> Dict[str, Any]:
+    async def collect_disk_metrics(self) -> dict[str, Any]:
         """Collect disk usage metrics."""
         ...
 
-    async def collect_all_metrics(self) -> Dict[str, Any]:
+    async def collect_all_metrics(self) -> dict[str, Any]:
         """Collect all available metrics."""
         ...
 
@@ -58,7 +57,7 @@ class PlatformManagerInterface(Protocol):
         ...
 
     @property
-    def config(self) -> Dict[str, Any]:
+    def config(self) -> dict[str, Any]:
         """Get platform-specific configuration."""
         ...
 
@@ -78,19 +77,19 @@ class PlatformManagerInterface(Protocol):
 class ServiceControllerInterface(Protocol):
     """Protocol for service control operations."""
 
-    async def restart_service(self, service_name: str) -> Dict[str, Any]:
+    async def restart_service(self, service_name: str) -> dict[str, Any]:
         """Restart a system service."""
         ...
 
-    async def get_service_status(self, service_name: str) -> Dict[str, Any]:
+    async def get_service_status(self, service_name: str) -> dict[str, Any]:
         """Get status of a system service."""
         ...
 
-    async def start_service(self, service_name: str) -> Dict[str, Any]:
+    async def start_service(self, service_name: str) -> dict[str, Any]:
         """Start a system service."""
         ...
 
-    async def stop_service(self, service_name: str) -> Dict[str, Any]:
+    async def stop_service(self, service_name: str) -> dict[str, Any]:
         """Stop a system service."""
         ...
 
@@ -98,11 +97,11 @@ class ServiceControllerInterface(Protocol):
 class TrackerServiceInterface(Protocol):
     """Protocol for tracker service integration."""
 
-    async def get_tracker_stats(self) -> Dict[str, Any]:
+    async def get_tracker_stats(self) -> dict[str, Any]:
         """Get tracker statistics."""
         ...
 
-    async def get_tracker_status(self) -> Dict[str, Any]:
+    async def get_tracker_status(self) -> dict[str, Any]:
         """Get tracker service status."""
         ...
 
@@ -114,11 +113,11 @@ class TrackerServiceInterface(Protocol):
 class CameraServiceInterface(Protocol):
     """Protocol for camera service operations."""
 
-    async def get_camera_info(self) -> Dict[str, Any]:
+    async def get_camera_info(self) -> dict[str, Any]:
         """Get camera information."""
         ...
 
-    async def capture_image(self) -> Optional[bytes]:
+    async def capture_image(self) -> bytes | None:
         """Capture image from camera."""
         ...
 
@@ -130,7 +129,7 @@ class CameraServiceInterface(Protocol):
 class ScreenshotServiceInterface(Protocol):
     """Protocol for screenshot services."""
 
-    async def capture_screenshot(self) -> Optional[bytes]:
+    async def capture_screenshot(self) -> bytes | None:
         """Capture screenshot."""
         ...
 
@@ -150,11 +149,11 @@ class ConfigurationServiceInterface(Protocol):
         """Set configuration value."""
         ...
 
-    def get_platform_config(self) -> Dict[str, Any]:
+    def get_platform_config(self) -> dict[str, Any]:
         """Get platform-specific configuration."""
         ...
 
-    def validate_config(self) -> Dict[str, Any]:
+    def validate_config(self) -> dict[str, Any]:
         """Validate current configuration."""
         ...
 
@@ -166,7 +165,7 @@ class LoggingServiceInterface(Protocol):
         """Get logger instance for given name."""
         ...
 
-    def configure_logging(self, config: Dict[str, Any]) -> None:
+    def configure_logging(self, config: dict[str, Any]) -> None:
         """Configure logging system."""
         ...
 
@@ -178,11 +177,11 @@ class LoggingServiceInterface(Protocol):
 class CachingServiceInterface(Protocol):
     """Protocol for caching services."""
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get value from cache."""
         ...
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value in cache with optional TTL."""
         ...
 
@@ -213,7 +212,7 @@ class BaseHealthService(ABC):
     async def is_healthy(self) -> bool:
         """Default implementation of health check."""
         try:
-            metrics = await self.get_health_metrics()
+            await self.get_health_metrics()
             # Consider system healthy if no critical issues
             return True  # Implement specific logic based on metrics
         except Exception:
@@ -224,21 +223,21 @@ class BaseMetricsCollector(ABC):
     """Abstract base class for metrics collectors."""
 
     @abstractmethod
-    async def collect_cpu_metrics(self) -> Dict[str, Any]:
+    async def collect_cpu_metrics(self) -> dict[str, Any]:
         """Collect CPU usage metrics."""
         pass
 
     @abstractmethod
-    async def collect_memory_metrics(self) -> Dict[str, Any]:
+    async def collect_memory_metrics(self) -> dict[str, Any]:
         """Collect memory usage metrics."""
         pass
 
     @abstractmethod
-    async def collect_disk_metrics(self) -> Dict[str, Any]:
+    async def collect_disk_metrics(self) -> dict[str, Any]:
         """Collect disk usage metrics."""
         pass
 
-    async def collect_all_metrics(self) -> Dict[str, Any]:
+    async def collect_all_metrics(self) -> dict[str, Any]:
         """Default implementation that combines all metrics."""
         return {
             "cpu": await self.collect_cpu_metrics(),
@@ -254,21 +253,21 @@ class BaseServiceController(ABC):
         self.platform_manager = platform_manager
 
     @abstractmethod
-    async def restart_service(self, service_name: str) -> Dict[str, Any]:
+    async def restart_service(self, service_name: str) -> dict[str, Any]:
         """Restart a system service."""
         pass
 
     @abstractmethod
-    async def get_service_status(self, service_name: str) -> Dict[str, Any]:
+    async def get_service_status(self, service_name: str) -> dict[str, Any]:
         """Get status of a system service."""
         pass
 
     @abstractmethod
-    async def start_service(self, service_name: str) -> Dict[str, Any]:
+    async def start_service(self, service_name: str) -> dict[str, Any]:
         """Start a system service."""
         pass
 
     @abstractmethod
-    async def stop_service(self, service_name: str) -> Dict[str, Any]:
+    async def stop_service(self, service_name: str) -> dict[str, Any]:
         """Stop a system service."""
         pass

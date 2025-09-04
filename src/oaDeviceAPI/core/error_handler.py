@@ -7,20 +7,18 @@ formatting to ensure consistent error responses across all endpoints.
 
 import logging
 import traceback
-from typing import Optional, Dict, Any, Union
-from datetime import datetime, timezone
+from typing import Any
 
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .exceptions import (
     BaseDeviceAPIException,
-    SystemError,
     ErrorSeverity,
-    convert_exception
+    SystemError,
+    convert_exception,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +26,15 @@ logger = logging.getLogger(__name__)
 class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     """
     Global error handling middleware that catches and formats all exceptions.
-    
+
     Provides structured error responses with proper HTTP status codes,
     logging, and monitoring integration.
     """
-    
+
     def __init__(self, app, include_traceback: bool = False):
         super().__init__(app)
         self.include_traceback = include_traceback
-    
+
     async def dispatch(self, request: Request, call_next):
         """Handle all requests and catch any exceptions."""
         try:
@@ -51,10 +49,10 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
         except Exception as exc:
             # Handle all other exceptions
             return await self._handle_generic_exception(request, exc)
-    
+
     async def _handle_device_api_exception(
-        self, 
-        request: Request, 
+        self,
+        request: Request,
         exc: BaseDeviceAPIException
     ) -> JSONResponse:
         """Handle BaseDeviceAPIException with structured response."""
@@ -72,10 +70,10 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 "details": exc.details
             }
         )
-        
+
         # Determine HTTP status code
         status_code = self._get_http_status_code(exc)
-        
+
         # Create response data
         response_data = exc.to_dict()
         response_data.update({
@@ -83,19 +81,19 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             "timestamp_epoch": int(exc.timestamp.timestamp()),
             "request_id": getattr(request.state, 'request_id', None)
         })
-        
+
         # Add traceback in development
         if self.include_traceback:
             response_data["traceback"] = traceback.format_exc().split('\n')
-        
+
         return JSONResponse(
             status_code=status_code,
             content=response_data
         )
-    
+
     async def _handle_generic_exception(
-        self, 
-        request: Request, 
+        self,
+        request: Request,
         exc: Exception
     ) -> JSONResponse:
         """Handle generic exceptions by converting them."""
@@ -109,7 +107,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 "method": request.method
             }
         )
-        
+
         # Log as critical since it's unhandled
         logger.critical(
             f"Unhandled exception [{device_exc.error_code}]: {device_exc.message}",
@@ -120,9 +118,9 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 "traceback": traceback.format_exc()
             }
         )
-        
+
         return await self._handle_device_api_exception(request, device_exc)
-    
+
     def _get_log_level(self, severity: ErrorSeverity) -> int:
         """Map error severity to logging level."""
         severity_mapping = {
@@ -132,14 +130,17 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             ErrorSeverity.CRITICAL: logging.CRITICAL
         }
         return severity_mapping.get(severity, logging.ERROR)
-    
+
     def _get_http_status_code(self, exc: BaseDeviceAPIException) -> int:
         """Map exception category to HTTP status code."""
         from .exceptions import (
-            ValidationError, PermissionError, ConfigurationError,
-            NetworkError, ExternalServiceError
+            ConfigurationError,
+            ExternalServiceError,
+            NetworkError,
+            PermissionError,
+            ValidationError,
         )
-        
+
         # Map exception types to status codes
         if isinstance(exc, ValidationError):
             return 400  # Bad Request
@@ -147,7 +148,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             return 403  # Forbidden
         elif isinstance(exc, ConfigurationError):
             return 500  # Internal Server Error (configuration issues)
-        elif isinstance(exc, (NetworkError, ExternalServiceError)):
+        elif isinstance(exc, NetworkError | ExternalServiceError):
             return 503  # Service Unavailable
         elif exc.severity == ErrorSeverity.CRITICAL:
             return 500  # Internal Server Error
@@ -158,11 +159,11 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
 class ErrorHandler:
     """
     Utility class for handling errors in sync/async contexts.
-    
+
     Provides decorators and context managers for consistent
     error handling across the application.
     """
-    
+
     @staticmethod
     def handle_errors(
         default_return: Any = None,
@@ -171,7 +172,7 @@ class ErrorHandler:
     ):
         """
         Decorator to handle errors in functions.
-        
+
         Args:
             default_return: Value to return on error
             log_errors: Whether to log errors
@@ -187,7 +188,7 @@ class ErrorHandler:
                 except Exception as exc:
                     if log_errors:
                         logger.error(f"Error in {func.__name__}: {exc}", exc_info=True)
-                    
+
                     if convert_exceptions:
                         raise convert_exception(exc)
                     elif default_return is not None:
@@ -196,7 +197,7 @@ class ErrorHandler:
                         raise
             return wrapper
         return decorator
-    
+
     @staticmethod
     def handle_errors_async(
         default_return: Any = None,
@@ -214,7 +215,7 @@ class ErrorHandler:
                 except Exception as exc:
                     if log_errors:
                         logger.error(f"Error in {func.__name__}: {exc}", exc_info=True)
-                    
+
                     if convert_exceptions:
                         raise convert_exception(exc)
                     elif default_return is not None:
@@ -226,18 +227,18 @@ class ErrorHandler:
 
 
 def create_error_response(
-    error: Union[str, BaseDeviceAPIException],
+    error: str | BaseDeviceAPIException,
     status_code: int = 500,
-    request_id: Optional[str] = None
+    request_id: str | None = None
 ) -> JSONResponse:
     """
     Create a standardized error response.
-    
+
     Args:
         error: Error message or exception
         status_code: HTTP status code
         request_id: Optional request ID for tracing
-        
+
     Returns:
         JSONResponse with error details
     """
@@ -249,14 +250,14 @@ def create_error_response(
     else:
         # Convert generic exception
         exc = convert_exception(error)
-    
+
     response_data = exc.to_dict()
     response_data.update({
         "status": "error",
         "timestamp_epoch": int(exc.timestamp.timestamp()),
         "request_id": request_id
     })
-    
+
     return JSONResponse(
         status_code=status_code,
         content=response_data
@@ -265,11 +266,11 @@ def create_error_response(
 
 def log_error_context(
     exc: BaseDeviceAPIException,
-    context: Optional[Dict[str, Any]] = None
+    context: dict[str, Any] | None = None
 ) -> None:
     """
     Log error with additional context information.
-    
+
     Args:
         exc: The exception to log
         context: Additional context information
@@ -280,17 +281,17 @@ def log_error_context(
         "severity": exc.severity.value,
         "details": exc.details
     }
-    
+
     if context:
         log_data["context"] = context
-    
+
     log_level = {
         ErrorSeverity.LOW: logging.INFO,
         ErrorSeverity.MEDIUM: logging.WARNING,
         ErrorSeverity.HIGH: logging.ERROR,
         ErrorSeverity.CRITICAL: logging.CRITICAL
     }.get(exc.severity, logging.ERROR)
-    
+
     logger.log(
         log_level,
         f"Error [{exc.error_code}]: {exc.message}",

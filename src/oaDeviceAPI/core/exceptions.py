@@ -5,9 +5,9 @@ This module provides standardized exceptions with proper typing,
 structured error information, and consistent error handling across platforms.
 """
 
-from typing import Optional, Dict, Any, Union
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
+from typing import Any
 
 
 class ErrorCategory(str, Enum):
@@ -33,19 +33,19 @@ class ErrorSeverity(str, Enum):
 class BaseDeviceAPIException(Exception):
     """
     Base exception class for all oaDeviceAPI errors.
-    
+
     Provides structured error information with context, severity,
     and recovery suggestions for better debugging and monitoring.
     """
-    
+
     def __init__(
         self,
         message: str,
         category: ErrorCategory,
         severity: ErrorSeverity = ErrorSeverity.MEDIUM,
-        error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        recovery_suggestion: Optional[str] = None,
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+        recovery_suggestion: str | None = None,
         platform_specific: bool = False
     ):
         super().__init__(message)
@@ -56,15 +56,15 @@ class BaseDeviceAPIException(Exception):
         self.details = details or {}
         self.recovery_suggestion = recovery_suggestion
         self.platform_specific = platform_specific
-        self.timestamp = datetime.now(timezone.utc)
-    
+        self.timestamp = datetime.now(UTC)
+
     def _generate_error_code(self) -> str:
         """Generate a unique error code based on category and class name."""
         class_name = self.__class__.__name__
         category_prefix = self.category.value.upper()[:3]
         return f"{category_prefix}_{class_name.upper()}"
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for API responses."""
         return {
             "error": self.message,
@@ -76,18 +76,18 @@ class BaseDeviceAPIException(Exception):
             "recovery_suggestion": self.recovery_suggestion,
             "platform_specific": self.platform_specific
         }
-    
+
     def __str__(self) -> str:
         return f"[{self.error_code}] {self.message}"
 
 
 class SystemError(BaseDeviceAPIException):
     """Errors related to system operations and resources."""
-    
+
     def __init__(
         self,
         message: str,
-        system_component: Optional[str] = None,
+        system_component: str | None = None,
         **kwargs
     ):
         kwargs.setdefault('category', ErrorCategory.SYSTEM)
@@ -98,12 +98,12 @@ class SystemError(BaseDeviceAPIException):
 
 class ServiceError(BaseDeviceAPIException):
     """Errors related to service management and operations."""
-    
+
     def __init__(
         self,
         message: str,
-        service_name: Optional[str] = None,
-        service_status: Optional[str] = None,
+        service_name: str | None = None,
+        service_status: str | None = None,
         **kwargs
     ):
         kwargs.setdefault('category', ErrorCategory.SERVICE)
@@ -117,12 +117,12 @@ class ServiceError(BaseDeviceAPIException):
 
 class ConfigurationError(BaseDeviceAPIException):
     """Errors related to configuration and settings."""
-    
+
     def __init__(
         self,
         message: str,
-        config_key: Optional[str] = None,
-        config_value: Optional[Any] = None,
+        config_key: str | None = None,
+        config_value: Any | None = None,
         **kwargs
     ):
         kwargs.setdefault('category', ErrorCategory.CONFIGURATION)
@@ -136,12 +136,12 @@ class ConfigurationError(BaseDeviceAPIException):
 
 class NetworkError(BaseDeviceAPIException):
     """Errors related to network operations and connectivity."""
-    
+
     def __init__(
         self,
         message: str,
-        endpoint: Optional[str] = None,
-        status_code: Optional[int] = None,
+        endpoint: str | None = None,
+        status_code: int | None = None,
         **kwargs
     ):
         kwargs.setdefault('category', ErrorCategory.NETWORK)
@@ -155,12 +155,12 @@ class NetworkError(BaseDeviceAPIException):
 
 class PermissionError(BaseDeviceAPIException):
     """Errors related to permissions and access control."""
-    
+
     def __init__(
         self,
         message: str,
-        required_permission: Optional[str] = None,
-        resource: Optional[str] = None,
+        required_permission: str | None = None,
+        resource: str | None = None,
         **kwargs
     ):
         kwargs.setdefault('category', ErrorCategory.PERMISSION)
@@ -175,12 +175,12 @@ class PermissionError(BaseDeviceAPIException):
 
 class ValidationError(BaseDeviceAPIException):
     """Errors related to data validation."""
-    
+
     def __init__(
         self,
         message: str,
-        field: Optional[str] = None,
-        value: Optional[Any] = None,
+        field: str | None = None,
+        value: Any | None = None,
         **kwargs
     ):
         kwargs.setdefault('category', ErrorCategory.VALIDATION)
@@ -194,12 +194,12 @@ class ValidationError(BaseDeviceAPIException):
 
 class ExternalServiceError(BaseDeviceAPIException):
     """Errors related to external service communication."""
-    
+
     def __init__(
         self,
         message: str,
-        service_name: Optional[str] = None,
-        endpoint: Optional[str] = None,
+        service_name: str | None = None,
+        endpoint: str | None = None,
         **kwargs
     ):
         kwargs.setdefault('category', ErrorCategory.EXTERNAL_SERVICE)
@@ -213,11 +213,11 @@ class ExternalServiceError(BaseDeviceAPIException):
 
 class PlatformError(BaseDeviceAPIException):
     """Errors related to platform-specific operations."""
-    
+
     def __init__(
         self,
         message: str,
-        platform: Optional[str] = None,
+        platform: str | None = None,
         **kwargs
     ):
         kwargs.setdefault('category', ErrorCategory.PLATFORM)
@@ -230,17 +230,17 @@ class PlatformError(BaseDeviceAPIException):
 # Specific error subclasses for common scenarios
 class TrackerError(ExternalServiceError):
     """Specific error for tracker service issues."""
-    
+
     def __init__(self, message: str, **kwargs):
         kwargs['service_name'] = 'tracker'
-        kwargs.setdefault('recovery_suggestion', 
+        kwargs.setdefault('recovery_suggestion',
                          'Check tracker service status and restart if necessary')
         super().__init__(message, **kwargs)
 
 
 class CamGuardError(ExternalServiceError):
     """Specific error for CamGuard service issues."""
-    
+
     def __init__(self, message: str, **kwargs):
         kwargs['service_name'] = 'camguard'
         kwargs.setdefault('recovery_suggestion',
@@ -250,8 +250,8 @@ class CamGuardError(ExternalServiceError):
 
 class HealthCheckError(SystemError):
     """Specific error for health check failures."""
-    
-    def __init__(self, message: str, component: Optional[str] = None, **kwargs):
+
+    def __init__(self, message: str, component: str | None = None, **kwargs):
         kwargs['system_component'] = component
         kwargs.setdefault('recovery_suggestion',
                          'Check system resources and service status')
@@ -260,8 +260,8 @@ class HealthCheckError(SystemError):
 
 class MetricsCollectionError(SystemError):
     """Specific error for metrics collection failures."""
-    
-    def __init__(self, message: str, metric_type: Optional[str] = None, **kwargs):
+
+    def __init__(self, message: str, metric_type: str | None = None, **kwargs):
         if metric_type:
             kwargs.setdefault('details', {})['metric_type'] = metric_type
         kwargs.setdefault('recovery_suggestion',
@@ -284,30 +284,30 @@ EXCEPTION_MAPPING = {
 
 def convert_exception(
     exc: Exception,
-    default_message: Optional[str] = None,
+    default_message: str | None = None,
     **kwargs
 ) -> BaseDeviceAPIException:
     """
     Convert standard exceptions to our unified exception format.
-    
+
     Args:
         exc: The exception to convert
         default_message: Default message if none can be extracted
         **kwargs: Additional arguments for the exception constructor
-        
+
     Returns:
         Converted BaseDeviceAPIException
     """
     exc_type = type(exc)
     message = default_message or str(exc) or f"Unexpected {exc_type.__name__}"
-    
+
     # Use mapping to convert to appropriate exception type
     target_exception_class = EXCEPTION_MAPPING.get(exc_type, SystemError)
-    
+
     # Add original exception details
     kwargs.setdefault('details', {}).update({
         'original_exception_type': exc_type.__name__,
         'original_exception_message': str(exc)
     })
-    
+
     return target_exception_class(message, **kwargs)

@@ -6,20 +6,19 @@ the detected platform, enabling clean separation between platform-agnostic
 interfaces and platform-specific implementations.
 """
 
-from typing import Type, Dict, Any
 from abc import ABC, abstractmethod
 
+from .container import ServiceContainer
+from .exceptions import ErrorSeverity, ServiceError
 from .interfaces import (
+    CameraServiceInterface,
     HealthServiceInterface,
-    MetricsCollectorInterface, 
+    MetricsCollectorInterface,
+    PlatformManagerInterface,
+    ScreenshotServiceInterface,
     ServiceControllerInterface,
     TrackerServiceInterface,
-    CameraServiceInterface,
-    ScreenshotServiceInterface,
-    PlatformManagerInterface
 )
-from .container import ServiceContainer
-from .exceptions import ServiceError, ErrorSeverity
 
 
 class ServiceFactory(ABC):
@@ -116,12 +115,16 @@ class OrangePiServiceFactory(ServiceFactory):
 
     def create_metrics_collector(self) -> MetricsCollectorInterface:
         """Create OrangePi metrics collector."""
-        from ..platforms.orangepi.services.metrics_provider import OrangePiMetricsProvider
+        from ..platforms.orangepi.services.metrics_provider import (
+            OrangePiMetricsProvider,
+        )
         return OrangePiMetricsProvider()
 
     def create_service_controller(self) -> ServiceControllerInterface:
         """Create OrangePi service controller."""
-        from ..platforms.orangepi.services.service_controller import OrangePiServiceController
+        from ..platforms.orangepi.services.service_controller import (
+            OrangePiServiceController,
+        )
         return OrangePiServiceController(self.platform_manager)
 
     def create_tracker_service(self) -> TrackerServiceInterface:
@@ -136,14 +139,16 @@ class OrangePiServiceFactory(ServiceFactory):
 
     def create_screenshot_service(self) -> ScreenshotServiceInterface:
         """Create OrangePi screenshot service."""
-        from ..platforms.orangepi.services.screenshot_service import OrangePiScreenshotService
+        from ..platforms.orangepi.services.screenshot_service import (
+            OrangePiScreenshotService,
+        )
         return OrangePiScreenshotService()
 
 
 class ServiceFactoryRegistry:
     """Registry for managing service factories by platform."""
 
-    _factories: Dict[str, Type[ServiceFactory]] = {
+    _factories: dict[str, type[ServiceFactory]] = {
         "macos": MacOSServiceFactory,
         "orangepi": OrangePiServiceFactory,
         "linux": OrangePiServiceFactory,  # Fallback for generic Linux
@@ -175,7 +180,7 @@ class ServiceFactoryRegistry:
         return factory_class(platform_manager)
 
     @classmethod
-    def register_factory(cls, platform: str, factory_class: Type[ServiceFactory]) -> None:
+    def register_factory(cls, platform: str, factory_class: type[ServiceFactory]) -> None:
         """Register a custom service factory for a platform."""
         cls._factories[platform.lower()] = factory_class
 
@@ -202,7 +207,7 @@ def setup_dependency_injection(platform_manager: PlatformManagerInterface) -> Se
 
     # Get platform-specific factory
     factory = ServiceFactoryRegistry.get_factory(
-        platform_manager.platform, 
+        platform_manager.platform,
         platform_manager
     )
 

@@ -5,14 +5,15 @@ Provides a platform-agnostic health monitoring service that uses dependency
 injection for metrics collection and follows clean architecture principles.
 """
 
-from typing import Dict, Any
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
-from .interfaces import HealthServiceInterface, MetricsCollectorInterface, BaseHealthService
-from .unified_metrics import MetricsFacade
-from .exceptions import ServiceError, ErrorSeverity
 from ..models.health_schemas import HealthMetrics, SystemInfo
+from .exceptions import ErrorSeverity, ServiceError
+from .interfaces import (
+    BaseHealthService,
+)
+from .unified_metrics import MetricsFacade
 
 
 class UnifiedHealthService(BaseHealthService):
@@ -42,19 +43,19 @@ class UnifiedHealthService(BaseHealthService):
         try:
             # Get all system metrics
             metrics_data = await self.metrics_facade.get_system_metrics()
-            
+
             # Convert to structured health metrics
             health_metrics = HealthMetrics(
                 cpu=self._extract_cpu_metrics(metrics_data.get('cpu', {})),
                 memory=self._extract_memory_metrics(metrics_data.get('memory', {})),
                 disk=self._extract_disk_metrics(metrics_data.get('disk', {})),
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 overall_health=await self._calculate_overall_health(metrics_data)
             )
 
             # Cache successful result
             self._cached_health_metrics = health_metrics
-            self._last_health_check = datetime.now(timezone.utc)
+            self._last_health_check = datetime.now(UTC)
 
             return health_metrics
 
@@ -62,7 +63,7 @@ class UnifiedHealthService(BaseHealthService):
             # Return cached data if available, otherwise raise
             if self._cached_health_metrics:
                 return self._cached_health_metrics
-            
+
             raise ServiceError(
                 f"Failed to collect health metrics: {str(e)}",
                 category="health_monitoring",
@@ -79,7 +80,7 @@ class UnifiedHealthService(BaseHealthService):
         """
         try:
             metrics_data = await self.metrics_facade.get_system_metrics()
-            
+
             return SystemInfo(
                 platform=self._get_platform_info(),
                 uptime=self._get_system_uptime(),
@@ -87,7 +88,7 @@ class UnifiedHealthService(BaseHealthService):
                 cpu_count=metrics_data.get('cpu', {}).get('count', 0),
                 memory_total=metrics_data.get('memory', {}).get('total', 0),
                 disk_total=metrics_data.get('disk', {}).get('total', 0),
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(UTC)
             )
 
         except Exception as e:
@@ -109,7 +110,7 @@ class UnifiedHealthService(BaseHealthService):
         except Exception:
             return False
 
-    async def get_detailed_health_report(self) -> Dict[str, Any]:
+    async def get_detailed_health_report(self) -> dict[str, Any]:
         """
         Get detailed health report with recommendations.
 
@@ -126,7 +127,7 @@ class UnifiedHealthService(BaseHealthService):
                 'metrics': health_metrics.dict(),
                 'system_info': system_info.dict(),
                 'recommendations': self._generate_recommendations(health_metrics),
-                'last_updated': datetime.now(timezone.utc).isoformat(),
+                'last_updated': datetime.now(UTC).isoformat(),
                 'service_status': 'operational'
             }
 
@@ -137,7 +138,7 @@ class UnifiedHealthService(BaseHealthService):
                 severity=ErrorSeverity.MEDIUM
             ) from e
 
-    def _extract_cpu_metrics(self, cpu_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_cpu_metrics(self, cpu_data: dict[str, Any]) -> dict[str, Any]:
         """Extract and normalize CPU metrics."""
         if cpu_data.get('error'):
             return {'available': False, 'error': cpu_data['error']}
@@ -150,7 +151,7 @@ class UnifiedHealthService(BaseHealthService):
             'available': True
         }
 
-    def _extract_memory_metrics(self, memory_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_memory_metrics(self, memory_data: dict[str, Any]) -> dict[str, Any]:
         """Extract and normalize memory metrics."""
         if memory_data.get('error'):
             return {'available': False, 'error': memory_data['error']}
@@ -163,7 +164,7 @@ class UnifiedHealthService(BaseHealthService):
             'available': True
         }
 
-    def _extract_disk_metrics(self, disk_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_disk_metrics(self, disk_data: dict[str, Any]) -> dict[str, Any]:
         """Extract and normalize disk metrics."""
         if disk_data.get('error'):
             return {'available': False, 'error': disk_data['error']}
@@ -176,10 +177,10 @@ class UnifiedHealthService(BaseHealthService):
             'available': True
         }
 
-    async def _calculate_overall_health(self, metrics_data: Dict[str, Any]) -> str:
+    async def _calculate_overall_health(self, metrics_data: dict[str, Any]) -> str:
         """Calculate overall system health status."""
         issues = []
-        
+
         # Check CPU health
         cpu = metrics_data.get('cpu', {})
         if not cpu.get('error') and cpu.get('usage_percent', 0) > 90:
@@ -206,19 +207,19 @@ class UnifiedHealthService(BaseHealthService):
     def _generate_recommendations(self, health_metrics: HealthMetrics) -> list[str]:
         """Generate health recommendations based on metrics."""
         recommendations = []
-        
+
         if hasattr(health_metrics, 'cpu') and health_metrics.cpu.get('usage_percent', 0) > 80:
             recommendations.append("Consider reducing CPU load or scaling resources")
-            
+
         if hasattr(health_metrics, 'memory') and health_metrics.memory.get('usage_percent', 0) > 80:
             recommendations.append("Memory usage is high - consider freeing up memory or adding more RAM")
-            
+
         if hasattr(health_metrics, 'disk') and health_metrics.disk.get('usage_percent', 0) > 85:
             recommendations.append("Disk space is running low - cleanup or expand storage")
 
         return recommendations
 
-    def _get_platform_info(self) -> Dict[str, Any]:
+    def _get_platform_info(self) -> dict[str, Any]:
         """Get platform information."""
         # This would integrate with platform manager
         return {
@@ -230,7 +231,7 @@ class UnifiedHealthService(BaseHealthService):
     def _get_system_uptime(self) -> float:
         """Get system uptime in seconds."""
         try:
-            with open('/proc/uptime', 'r') as f:
+            with open('/proc/uptime') as f:
                 return float(f.readline().split()[0])
         except:
             return 0.0

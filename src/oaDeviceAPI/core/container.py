@@ -7,11 +7,12 @@ management with type-safe dependency resolution.
 """
 
 import inspect
-from typing import Any, Callable, Dict, Type, TypeVar, get_type_hints
+from collections.abc import Callable
 from functools import wraps
 from threading import Lock
+from typing import Any, TypeVar, get_type_hints
 
-from .exceptions import ServiceError, ErrorSeverity
+from .exceptions import ErrorSeverity, ServiceError
 
 T = TypeVar('T')
 
@@ -23,15 +24,15 @@ class ServiceContainer:
     """
 
     def __init__(self):
-        self._services: Dict[Type, Type] = {}
-        self._singletons: Dict[Type, Any] = {}
-        self._instances: Dict[Type, Any] = {}
+        self._services: dict[type, type] = {}
+        self._singletons: dict[type, Any] = {}
+        self._instances: dict[type, Any] = {}
         self._lock = Lock()
 
     def register(
         self,
-        interface: Type[T],
-        implementation: Type[T],
+        interface: type[T],
+        implementation: type[T],
         singleton: bool = True
     ) -> 'ServiceContainer':
         """
@@ -52,7 +53,7 @@ class ServiceContainer:
 
         return self
 
-    def register_instance(self, interface: Type[T], instance: T) -> 'ServiceContainer':
+    def register_instance(self, interface: type[T], instance: T) -> 'ServiceContainer':
         """
         Register a specific instance for an interface.
 
@@ -69,7 +70,7 @@ class ServiceContainer:
 
         return self
 
-    def get(self, interface: Type[T]) -> T:
+    def get(self, interface: type[T]) -> T:
         """
         Resolve a service instance by interface type.
 
@@ -114,7 +115,7 @@ class ServiceContainer:
                 severity=ErrorSeverity.HIGH
             ) from e
 
-    def _create_instance(self, implementation: Type[T]) -> T:
+    def _create_instance(self, implementation: type[T]) -> T:
         """
         Create an instance with automatic dependency injection.
 
@@ -164,7 +165,7 @@ class ServiceContainer:
         @wraps(func)
         def wrapper(*args, **kwargs):
             # Resolve missing parameters
-            for param_name, param in signature.parameters.items():
+            for param_name, _param in signature.parameters.items():
                 if param_name in kwargs:
                     continue
 
@@ -177,7 +178,7 @@ class ServiceContainer:
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
             # Resolve missing parameters
-            for param_name, param in signature.parameters.items():
+            for param_name, _param in signature.parameters.items():
                 if param_name in kwargs:
                     continue
 
@@ -196,11 +197,11 @@ class ServiceContainer:
             self._singletons.clear()
             self._instances.clear()
 
-    def is_registered(self, interface: Type) -> bool:
+    def is_registered(self, interface: type) -> bool:
         """Check if a service is registered."""
         return interface in self._services or interface in self._instances
 
-    def get_registered_services(self) -> Dict[Type, Type]:
+    def get_registered_services(self) -> dict[type, type]:
         """Get all registered service mappings."""
         with self._lock:
             return self._services.copy()

@@ -5,13 +5,12 @@ Consolidates metrics collection across platforms, eliminating code duplication
 and providing a consistent interface for health monitoring and system metrics.
 """
 
-import asyncio
-from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
+from typing import Any
 
-from .interfaces import MetricsCollectorInterface, BaseMetricsCollector
 from .caching import CacheManager
-from .exceptions import ServiceError, ErrorSeverity
+from .exceptions import ErrorSeverity, ServiceError
+from .interfaces import BaseMetricsCollector, MetricsCollectorInterface
 
 
 class UnifiedMetricsCollector(BaseMetricsCollector):
@@ -31,7 +30,7 @@ class UnifiedMetricsCollector(BaseMetricsCollector):
         self.cache_manager = CacheManager()
 
     @CacheManager().cache_with_ttl(ttl=30)  # Cache for 30 seconds
-    async def collect_cpu_metrics(self) -> Dict[str, Any]:
+    async def collect_cpu_metrics(self) -> dict[str, Any]:
         """Collect CPU metrics with caching."""
         try:
             return await self.platform_collector.collect_cpu_metrics()
@@ -43,7 +42,7 @@ class UnifiedMetricsCollector(BaseMetricsCollector):
             ) from e
 
     @CacheManager().cache_with_ttl(ttl=30)
-    async def collect_memory_metrics(self) -> Dict[str, Any]:
+    async def collect_memory_metrics(self) -> dict[str, Any]:
         """Collect memory metrics with caching."""
         try:
             return await self.platform_collector.collect_memory_metrics()
@@ -55,7 +54,7 @@ class UnifiedMetricsCollector(BaseMetricsCollector):
             ) from e
 
     @CacheManager().cache_with_ttl(ttl=60)  # Disk metrics change less frequently
-    async def collect_disk_metrics(self) -> Dict[str, Any]:
+    async def collect_disk_metrics(self) -> dict[str, Any]:
         """Collect disk metrics with caching."""
         try:
             return await self.platform_collector.collect_disk_metrics()
@@ -66,15 +65,15 @@ class UnifiedMetricsCollector(BaseMetricsCollector):
                 severity=ErrorSeverity.MEDIUM
             ) from e
 
-    async def collect_all_metrics(self) -> Dict[str, Any]:
+    async def collect_all_metrics(self) -> dict[str, Any]:
         """
         Collect all metrics concurrently for better performance.
-        
+
         Returns:
             Dictionary containing all metrics with error handling
         """
         results = {}
-        
+
         # Collect metrics concurrently
         tasks = {
             'cpu': self.collect_cpu_metrics(),
@@ -95,15 +94,15 @@ class UnifiedMetricsCollector(BaseMetricsCollector):
 
         return results
 
-    async def get_health_summary(self) -> Dict[str, Any]:
+    async def get_health_summary(self) -> dict[str, Any]:
         """
         Get high-level health summary based on all metrics.
-        
+
         Returns:
             Health summary with status indicators
         """
         metrics = await self.collect_all_metrics()
-        
+
         summary = {
             'overall_status': 'healthy',
             'issues': [],
@@ -118,7 +117,7 @@ class UnifiedMetricsCollector(BaseMetricsCollector):
                 summary['issues'].append('High CPU usage')
                 summary['overall_status'] = 'warning'
 
-        # Analyze memory health  
+        # Analyze memory health
         if 'memory' in metrics and not metrics['memory'].get('error'):
             memory_usage = metrics['memory'].get('usage_percent', 0)
             if memory_usage > 85:
@@ -139,7 +138,7 @@ class UnifiedMetricsCollector(BaseMetricsCollector):
 class MetricsFacade:
     """
     Facade pattern for simplified metrics access across the application.
-    
+
     Provides a single entry point for all metrics operations with consistent
     error handling and caching behavior.
     """
@@ -153,30 +152,30 @@ class MetricsFacade:
         """
         self.collector = metrics_collector
 
-    async def get_system_metrics(self) -> Dict[str, Any]:
+    async def get_system_metrics(self) -> dict[str, Any]:
         """Get all system metrics."""
         return await self.collector.collect_all_metrics()
 
-    async def get_cpu_info(self) -> Dict[str, Any]:
+    async def get_cpu_info(self) -> dict[str, Any]:
         """Get CPU information and usage."""
         return await self.collector.collect_cpu_metrics()
 
-    async def get_memory_info(self) -> Dict[str, Any]:
+    async def get_memory_info(self) -> dict[str, Any]:
         """Get memory information and usage."""
         return await self.collector.collect_memory_metrics()
 
-    async def get_disk_info(self) -> Dict[str, Any]:
+    async def get_disk_info(self) -> dict[str, Any]:
         """Get disk information and usage."""
         return await self.collector.collect_disk_metrics()
 
-    async def get_health_status(self) -> Dict[str, Any]:
+    async def get_health_status(self) -> dict[str, Any]:
         """Get overall system health status."""
         return await self.collector.get_health_summary()
 
     async def is_system_healthy(self) -> bool:
         """
         Quick health check.
-        
+
         Returns:
             True if system is healthy, False otherwise
         """
@@ -192,7 +191,7 @@ class MetricsStrategy(ABC):
     """Abstract strategy for platform-specific metrics collection."""
 
     @abstractmethod
-    async def get_platform_specific_metrics(self) -> Dict[str, Any]:
+    async def get_platform_specific_metrics(self) -> dict[str, Any]:
         """Get metrics specific to the platform."""
         pass
 
@@ -205,7 +204,7 @@ class MetricsStrategy(ABC):
 class MacOSMetricsStrategy(MetricsStrategy):
     """macOS-specific metrics collection strategy."""
 
-    async def get_platform_specific_metrics(self) -> Dict[str, Any]:
+    async def get_platform_specific_metrics(self) -> dict[str, Any]:
         """Get macOS-specific metrics like SMC data."""
         return {
             'temperature_sensors': await self._get_temperature_data(),
@@ -217,17 +216,17 @@ class MacOSMetricsStrategy(MetricsStrategy):
         """Metrics supported on macOS."""
         return ['cpu', 'memory', 'disk', 'temperature', 'power', 'system_profile']
 
-    async def _get_temperature_data(self) -> Dict[str, Any]:
+    async def _get_temperature_data(self) -> dict[str, Any]:
         """Get temperature sensor data via SMC."""
         # Implementation would use SMC commands
         return {'available': True}  # Placeholder
 
-    async def _get_power_info(self) -> Dict[str, Any]:
+    async def _get_power_info(self) -> dict[str, Any]:
         """Get power management information."""
         # Implementation would use pmset or system_profiler
         return {'available': True}  # Placeholder
 
-    async def _get_system_profile(self) -> Dict[str, Any]:
+    async def _get_system_profile(self) -> dict[str, Any]:
         """Get system profile information."""
         # Implementation would use system_profiler
         return {'available': True}  # Placeholder
@@ -236,7 +235,7 @@ class MacOSMetricsStrategy(MetricsStrategy):
 class OrangePiMetricsStrategy(MetricsStrategy):
     """OrangePi-specific metrics collection strategy."""
 
-    async def get_platform_specific_metrics(self) -> Dict[str, Any]:
+    async def get_platform_specific_metrics(self) -> dict[str, Any]:
         """Get OrangePi-specific metrics."""
         return {
             'gpio_status': await self._get_gpio_info(),
@@ -248,17 +247,17 @@ class OrangePiMetricsStrategy(MetricsStrategy):
         """Metrics supported on OrangePi."""
         return ['cpu', 'memory', 'disk', 'gpio', 'thermal', 'hardware']
 
-    async def _get_gpio_info(self) -> Dict[str, Any]:
+    async def _get_gpio_info(self) -> dict[str, Any]:
         """Get GPIO status information."""
         # Implementation would read GPIO status
         return {'available': True}  # Placeholder
 
-    async def _get_thermal_info(self) -> Dict[str, Any]:
+    async def _get_thermal_info(self) -> dict[str, Any]:
         """Get thermal zone information."""
         # Implementation would read /sys/class/thermal
         return {'available': True}  # Placeholder
 
-    async def _get_hardware_info(self) -> Dict[str, Any]:
+    async def _get_hardware_info(self) -> dict[str, Any]:
         """Get hardware-specific information."""
         # Implementation would read hardware specs
         return {'available': True}  # Placeholder
