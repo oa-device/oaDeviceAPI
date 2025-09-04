@@ -2,19 +2,19 @@
 
 # Import from shared schemas to maintain compatibility
 from .health_schemas import (
-    BaseCPUMetrics,
-    BaseMemoryMetrics, 
-    BaseDiskMetrics,
-    BaseNetworkMetrics,
-    BaseHealthMetrics,
-    BaseSystemInfo,
-    BaseDeviceInfo,
-    BaseVersionInfo,
     BaseCapabilities,
-    MacOSCapabilities,
-    OrangePiCapabilities,
+    BaseCPUMetrics,
+    BaseDeviceInfo,
+    BaseDiskMetrics,
+    BaseHealthMetrics,
     BaseHealthResponse,
+    BaseMemoryMetrics,
+    BaseNetworkMetrics,
+    BaseSystemInfo,
+    BaseVersionInfo,
+    MacOSCapabilities,
     MacOSHealthResponse,
+    OrangePiCapabilities,
     OrangePiHealthResponse,
     StandardizedErrorResponse,
 )
@@ -22,7 +22,7 @@ from .health_schemas import (
 __all__ = [
     "BaseCPUMetrics",
     "BaseMemoryMetrics",
-    "BaseDiskMetrics", 
+    "BaseDiskMetrics",
     "BaseNetworkMetrics",
     "BaseHealthMetrics",
     "BaseSystemInfo",
