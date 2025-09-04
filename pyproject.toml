@@ -86,6 +86,8 @@ extend-exclude = '''
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -114,19 +116,24 @@ warn_return_any = true
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q --strict-markers"
-asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 markers = [
-    "asyncio: Async tests",
     "unit: Unit tests",
     "integration: Integration tests", 
     "macos: macOS platform specific tests",
     "orangepi: OrangePi platform specific tests",
     "slow: Slow running tests",
+    "performance: Performance tests",
+    "security: Security tests",
+    "load: Load/stress tests",
+    "asyncio: Asynchronous test functions",
 ]
+
+[tool.pytest_asyncio]
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["src"]
@@ -143,5 +150,7 @@ exclude_lines = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.17.1",
     "pytest-cov>=6.2.1",
+    "ruff>=0.12.10",
 ]

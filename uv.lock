@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "sys_platform == 'darwin'",
@@ -648,7 +648,9 @@ test = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "mypy" },
     { name = "pytest-cov" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
@@ -681,7 +683,11 @@ requires-dist = [
 provides-extras = ["dev", "test"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest-cov", specifier = ">=6.2.1" }]
+dev = [
+    { name = "mypy", specifier = ">=1.17.1" },
+    { name = "pytest-cov", specifier = ">=6.2.1" },
+    { name = "ruff", specifier = ">=0.12.10" },
+]
 
 [[package]]
 name = "opencv-python"
