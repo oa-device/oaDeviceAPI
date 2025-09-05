@@ -235,7 +235,7 @@ def get_camguard_config() -> dict[str, Any]:
     return {
         "recording": {
             "resolution": "1920x1080",
-            "framerate": 30,
+            "framerate": 30.000030,  # Precise framerate for macOS USB cameras
             "chunk_duration": 300
         }
     }
