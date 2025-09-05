@@ -100,9 +100,22 @@ async def root():
         "features": platform_manager.get_available_features(),
         "endpoints": {
             "health": "/health",
-            "system": "/system",
+            "platform": "/",  # Root endpoint provides platform info
+            "system": "/system", 
             "docs": "/docs"
         }
+    }
+
+# Generic health endpoint for deployment validation
+@app.get("/health")
+async def health():
+    """Generic health check endpoint that works across all platforms."""
+    return {
+        "status": "healthy",
+        "platform": platform_manager.platform,
+        "version": APP_VERSION,
+        "timestamp": platform_manager.get_current_time(),
+        "detailed_health": f"/{platform_manager.platform}/health"
     }
 
 if __name__ == "__main__":
