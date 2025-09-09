@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Unified Device API Entry Point
 
@@ -118,13 +119,51 @@ async def health():
         "detailed_health": f"/{platform_manager.platform}/health"
     }
 
+def validate_startup_environment():
+    """Validate runtime environment and dependencies before starting service."""
+    import sys
+    import os
+    from pathlib import Path
+    
+    # Check Python version
+    if sys.version_info < (3, 12):
+        logger.error(f"Python 3.12+ required, got {sys.version_info}")
+        return False
+        
+    # Check working directory has required files
+    required_files = ["pyproject.toml", "src/oaDeviceAPI/__init__.py"]
+    for file_path in required_files:
+        if not Path(file_path).exists():
+            logger.error(f"Required file missing: {file_path}")
+            logger.info(f"Current working directory: {os.getcwd()}")
+            logger.info(f"Directory contents: {list(Path('.').iterdir())}")
+            return False
+    
+    # Log environment info
+    logger.info(f"oaDeviceAPI v{APP_VERSION} starting")
+    logger.info(f"Python: {sys.version}")
+    logger.info(f"Platform: {platform_manager.platform}")
+    logger.info(f"Working directory: {os.getcwd()}")
+    logger.info(f"Host: {app_config.network.host}:{app_config.network.port}")
+    
+    return True
+
 if __name__ == "__main__":
+    # Validate environment before starting
+    if not validate_startup_environment():
+        logger.error("Startup validation failed - exiting")
+        exit(1)
+    
     # Configure uvicorn server
-    uvicorn.run(
-        "main:app",
-        host=app_config.network.host,
-        port=app_config.network.port,
-        log_level=app_config.logging.level.value.lower(),
-        reload=app_config.is_development(),
-        access_log=True
-    )
+    try:
+        uvicorn.run(
+            "main:app",
+            host=app_config.network.host,
+            port=app_config.network.port,
+            log_level=app_config.logging.level.value.lower(),
+            reload=app_config.is_development(),
+            access_log=True
+        )
+    except Exception as e:
+        logger.error(f"Failed to start server: {e}")
+        exit(1)
