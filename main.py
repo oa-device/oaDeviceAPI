@@ -111,11 +111,12 @@ async def root():
 @app.get("/health")
 async def health():
     """Generic health check endpoint that works across all platforms."""
+    from datetime import datetime
     return {
         "status": "healthy",
         "platform": platform_manager.platform,
         "version": APP_VERSION,
-        "timestamp": platform_manager.get_current_time(),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
         "detailed_health": f"/{platform_manager.platform}/health"
     }
 
